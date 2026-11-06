@@ -150,7 +150,7 @@ footer { color: var(--muted); font-size: .78rem; padding: 0 0 24px; max-width: 8
 <header class="top">
   <div>
     <h1>Peso e Balanceamento — EC 135 T2+</h1>
-    <div class="sub"><span id="anvNote"></span> · <span id="offTag">Preparando uso offline…</span></div>
+    <div class="sub"><span id="anvNote"></span><span id="offTag"></span></div>
   </div>
   <div class="seg" role="group" aria-label="Aeronave">
     <button type="button" id="anv-PR-RFA" data-anv="PR-RFA">PR-RFA</button>
@@ -165,8 +165,7 @@ footer { color: var(--muted); font-size: .78rem; padding: 0 0 24px; max-width: 8
   <div class="chips">
     <span class="chip">Decolagem <b id="cW"></b> kg</span>
     <span class="chip">Disponível <b id="cD"></b> kg</span>
-    <span class="chip">CG <b id="cX"></b> mm</span>
-    <span class="chip">Pouso <b id="cF"></b> kg comb.</span>
+    <span class="chip">Combustível no pouso <b id="cF"></b> kg</span>
   </div>
 </section>
 
@@ -174,6 +173,7 @@ footer { color: var(--muted); font-size: .78rem; padding: 0 0 24px; max-width: 8
   <div class="col inputs">
     <section class="card">
       <h2>Peso em cada posição <small>pessoa ou carga, com vestuário e capacete</small></h2>
+      <p class="note" style="margin:0 0 6px">Cada banco instalado já soma 11 kg (peso do próprio banco) ao cálculo.</p>
       <div class="rows" id="posRows"></div>
       <div class="total"><span>Total nas posições</span><span class="num" id="posTotal"></span></div>
     </section>
@@ -196,17 +196,11 @@ footer { color: var(--muted); font-size: .78rem; padding: 0 0 24px; max-width: 8
 
     <section class="card">
       <h2>Materiais embarcados <small>padrão Ceoar já preenchido</small></h2>
+      <p class="note" style="margin:0 0 6px">Locais: Frente (cabine dos pilotos), Meio, Trás e Bagageiro.</p>
       <div class="mats" id="matRows"></div>
       <div class="total"><span>Total de materiais</span><span class="num" id="matTotal"></span></div>
     </section>
 
-    <section class="card">
-      <details class="cfg">
-        <summary>Configuração técnica</summary>
-        <p>Alterar só com documento de suporte (FLM, FMS ou ficha de pesagem).</p>
-        <div class="rows" id="cfgRows"></div>
-      </details>
-    </section>
   </div>
 
   <div class="col results">
@@ -219,17 +213,18 @@ footer { color: var(--muted); font-size: .78rem; padding: 0 0 24px; max-width: 8
       <h2>Envelope por fase</h2>
       <div class="banner" id="envBanner"></div>
       <table class="t"><thead><tr><th>Fase</th><th>Situação</th><th>Condição</th></tr></thead><tbody id="phases"></tbody></table>
-      <svg class="chart" id="chart" viewBox="0 0 560 400" role="img" aria-label="Envelope longitudinal do CG"></svg>
+      <svg class="chart" id="chart" viewBox="0 0 560 400" role="img" aria-label="Envelope do CG: posição na decolagem e no pouso"></svg>
       <div class="legend">
         <span><i id="lgEnv" style="border-color: var(--accent)"></i>Envelope (FLM Fig. 6-2)</span>
         <span><i style="border-color: var(--traj-a)"></i>CG em voo: auxiliar esvaziado primeiro</span>
         <span><i style="border-color: var(--traj-f); border-top-style: dashed"></i>CG em voo: auxiliar transferido de imediato</span>
       </div>
-      <div class="note">As duas linhas de voo só se separam quando há combustível no auxiliar. Círculo = decolagem; triângulo = pouso.</div>
+      <div class="legend"><span><b style="color:var(--accent);font-size:1.1rem">●</b> Bola = decolagem</span><span><b style="color:var(--bad);font-size:1.1rem">▲</b> Triângulo = pouso</span></div>
+      <div class="note">As duas linhas de voo só se separam quando há combustível no tanque auxiliar.</div>
     </section>
 
     <section class="card">
-      <h2>Números do voo</h2>
+      <h2>Peso e combustível</h2>
       <table class="t"><thead><tr><th></th><th style="text-align:right">Decolagem</th><th style="text-align:right">Pouso</th></tr></thead><tbody id="nums"></tbody></table>
     </section>
 
@@ -247,9 +242,9 @@ footer { color: var(--muted); font-size: .78rem; padding: 0 0 24px; max-width: 8
 </main>
 
 <footer>
-  Cálculo idêntico à planilha "PB_EC135_Ceoar v5" (FLM EC 135 T2+ Seção 6, ficha Helisul PR-RFC de 20/02/2025, FMS 9.2-25 Rev. 2), validado em 472 cenários.
+  Cálculo conforme o FLM EC 135 T2+ (Seção 6) e a ficha de pesagem da aeronave, validado contra a planilha Ceoar em 472 cenários.
   Ferramenta de apoio ao planejamento: a responsabilidade pelo peso e balanceamento é do piloto em comando.
-  Os dados ficam salvos só neste aparelho. Versão offline 1.0 (06/11/2026).
+  Os dados ficam salvos só neste aparelho. Versão 1.1 (06/11/2026).
 </footer>
 
 <div class="toast" id="toast" role="alert"></div>
@@ -279,11 +274,11 @@ const PB = (() => {
     { id: 'aftR', name: 'Banco traseiro direito', x: 4243, y: 408 },
   ];
   const HOLES = [3684, 3709, 3735, 3760, 3786, 3811, 3836, 3862, 3887, 3913, 3938, 3963, 3988, 4014, 4040, 4065, 4090, 4116, 4141, 4167, 4192, 4217, 4243];
-  const LOCS = ['Cabine dos pilotos', 'Frente', 'Meio', 'Trás', 'Bagageiro'];
-  const LOC_X = { 'Frente': 3558, 'Meio': 4320, 'Trás': 4955, 'Bagageiro': 5000 };
+  const LOCS = ['Frente', 'Meio', 'Trás', 'Bagageiro'];   // Frente = cabine dos pilotos (braço do piloto)
+  const LOC_X = { 'Meio': 4320, 'Trás': 4955, 'Bagageiro': 5000 };
   const ITEMS = [['Manuais Airbus', 4.1, 1, 'Meio'], ['Checklists Ceoar', 1.8, 1, 'Frente'], ['Documentos obrigatórios', 1.6, 1, 'Meio'], ['MAPO', 1.2, 1, 'Meio'],
     ['Diário de bordo', 0.5, 1, 'Meio'], ['Material do FLIR', 0.7, 1, 'Trás'], ['iPad reserva', 1.2, 1, 'Meio'], ['Fone antigo', 1.0, 0, ''],
-    ['Fone novo', 0.6, 2, 'Cabine dos pilotos'], ['Sacola de bloqueios', 13.9, 1, 'Bagageiro'], ['Copo coletor', 1.1, 1, 'Bagageiro'],
+    ['Fone novo', 0.6, 2, 'Frente'], ['Sacola de bloqueios', 13.9, 1, 'Bagageiro'], ['Copo coletor', 1.1, 1, 'Bagageiro'],
     ['Bateria portátil', 8.1, 0, ''], ['Para-sol', 1.1, 0, ''], ['Garrafa de lavagem do compressor', 7.4, 0, ''], ['Rodas (par)', 56.0, 0, ''],
     ['EcoFlow (bateria + acessórios)', 9.6, 0, ''], ['Bote salva-vidas RAF1108', 16.6, 0, ''], ['Colete salva-vidas Switlik', 1.8, 0, ''],
     ['Fonte externa', 0, 0, ''], ['Outro 1', 0, 0, ''], ['Outro 2', 0, 0, ''], ['Outro 3', 0, 0, ''], ['Outro 4', 0, 0, ''], ['Outro 5', 0, 0, '']];
@@ -386,7 +381,7 @@ const PB = (() => {
     if (c.prov === 'S') add('Provisões fixas do FLIR', a.prov[0], a.prov[1]);
     LOCS.forEach(L => {
       const m = s.mats.reduce((t, it) => t + (it.loc === L && isNum(it.kg) && isNum(it.qty) ? it.kg * it.qty : 0), 0);
-      if (m) add('Materiais — ' + L, m, L === 'Cabine dos pilotos' ? pilX : LOC_X[L]);
+      if (m) add('Materiais — ' + L, m, L === 'Frente' ? pilX : LOC_X[L]);
     });
     const ZW = items.reduce((t, i) => t + i.m, 0), ZMX = items.reduce((t, i) => t + i.mx, 0), ZMY = items.reduce((t, i) => t + i.my, 0);
 
@@ -438,6 +433,7 @@ const PB = (() => {
       return t.trim();
     };
     ph.D.text = ptext(ph.D, true);
+    ph.V.ffuel = vF.ms; ph.V.afuel = vA.ms;
     ph.V.text = ptext(ph.V, false, ` (com ${Math.round(vF.ms)} kg no principal+supplies)`, ` (com ${Math.round(vA.ms)} kg no principal+supplies)`);
     ph.P.text = ptext(ph.P, false);
     const ENV_OUT = W_DEP > LIM.PMD || MIN_MF < 0 || MIN_MA < 0 || MIN_ML < 0 || MIN_MI < 0;
@@ -473,7 +469,7 @@ const PB = (() => {
     return {
       items, ZW, ZMX, ZMY, AU, TRAP, MS0, BURN, FUEL_ARR, traj, W_DEP, W_ARR, X_DEP: dep.X, Y_DEP: dep.Y, X_ARR_A: arrA.X, X_ARR_F: arrF.X, X_ARR, Y_ARR: arrA.Y,
       LFD: fwdLim(W_DEP), LAD: aftLim(W_DEP), LFA: fwdLim(W_ARR), LAA: aftLim(W_ARR),
-      MIN_MF, MIN_MA, MIN_ML, MIN_MI, WHERE_F: where(pF), WHERE_A: where(pA), ph, ENV_OUT, errs, V, msg, aut, EET_T_MAX, EET_V_MAX,
+      MIN_MF, MIN_MA, MIN_ML, MIN_MI, WHERE_F: where(pF), WHERE_A: where(pA), pF, pA, ph, ENV_OUT, errs, V, msg, aut, EET_T_MAX, EET_V_MAX,
       fuelDep: dep.ax + TRAP + dep.ms, fuelArr: Math.max(FUEL_ARR, 0) + TRAP, flirModel: a.flirModel, anvNote: a.note, eqMass: k => a[k][0],
     };
   }
@@ -485,7 +481,7 @@ if (typeof module !== 'undefined') module.exports = PB;
 </script>
 <script>
 (() => {
-  const KEY = 'pb-ec135-ceoar-v5';
+  const KEY = 'pb-ec135-ceoar-v6';
   const $ = id => document.getElementById(id);
   const f1 = v => (Math.round(v * 10) / 10).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   const f0 = v => Math.round(v).toLocaleString('pt-BR');
@@ -496,7 +492,10 @@ if (typeof module !== 'undefined') module.exports = PB;
 
   let S = load();
   function load() {
-    try { const raw = localStorage.getItem(KEY); if (raw) { const o = JSON.parse(raw); if (o && o.seats && o.mats && o.cfg) return o; } } catch (e) {}
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (raw) { const o = JSON.parse(raw); if (o && o.seats && o.mats && o.equip) { o.cfg = PB.defaults().cfg; o.mats.forEach(m => { if (!PB.LOCS.includes(m.loc)) m.loc = m.loc === 'Cabine dos pilotos' ? 'Frente' : ''; }); return o; } }
+    } catch (e) {}
     return PB.defaults();
   }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
@@ -599,7 +598,7 @@ if (typeof module !== 'undefined') module.exports = PB;
       }, { dec: 0 });
       const cons = numField('in-' + kc, () => S[kc], v => S[kc] = v, v => v < 0 ? 'Informe um consumo maior ou igual a zero.' : '', { dec: 0 });
       cons.style.width = '76px';
-      const r = row(cr, `${nm}<small>em minutos; consumo em kg/h ao lado</small>`, wrap(cons, unit('kg/h')), wrap(nf, unit('min')));
+      const r = row(cr, `${nm}<small>tempo em minutos; consumo médio ao lado</small>`, wrap(nf, unit('min')), wrap(cons, unit('kg/h')));
       addMsg(r, 'hint', 'h-' + k); addMsg(r, 'err', 'e-' + k);
     });
     // materiais
@@ -630,25 +629,6 @@ if (typeof module !== 'undefined') module.exports = PB;
       const e = document.createElement('div'); e.className = 'err'; e.id = 'me-' + i; d.appendChild(e);
       mr.appendChild(d);
     });
-    // configuração técnica
-    const cf = $('cfgRows'); cf.innerHTML = ''; const c = S.cfg;
-    const selRow = (id, label, options, get, set) => {
-      const s = document.createElement('select'); s.id = id; s.innerHTML = options.map(o => `<option ${get() === o ? 'selected' : ''}>${o}</option>`).join('');
-      s.onchange = () => { set(s.value); update(); build(); };
-      row(cf, label, document.createElement('span'), s);
-    };
-    selRow('cfg-assento', 'Modelo do assento dos pilotos<small>FLM Fig. 6-6 (H110 = 2.428 mm)</small>', Object.keys(PB.SEAT_MODEL), () => c.assento, v => c.assento = v);
-    row(cf, 'Provisões fixas do FLIR fora da pesagem', document.createElement('span'), sw('cfg-prov', c.prov === 'S', on => { c.prov = on ? 'S' : 'N'; update(); }, 'Provisões fixas do FLIR fora da pesagem'));
-    row(cf, 'Massa de cada banco de passageiro', document.createElement('span'), wrap(numField('cfg-seatw', () => c.seatW, v => c.seatW = v, v => v < 0 ? 'Valor negativo.' : ''), unit('kg')));
-    row(cf, 'Densidade para conversão em litros', document.createElement('span'), wrap(numField('cfg-dens', () => c.dens, v => c.dens = v, v => v <= 0 ? 'A densidade deve ser maior que zero.' : '', { dec: 3 }), unit('kg/l')));
-    const opw = numField('cfg-opw', () => c.op.w, v => c.op.w = v, v => v < 0 ? 'Valor negativo.' : (v > 0 && c.op.inst !== 'S' ? 'Só é possível informar peso no assento de operador instalado.' : ''));
-    opw.disabled = c.op.inst !== 'S';
-    row(cf, 'Assento de operador do FLIR<small>FLM Fig. 6-13 a 6-15</small>', sw('cfg-opi', c.op.inst === 'S', on => { c.op.inst = on ? 'S' : 'N'; if (!on) c.op.w = 0; update(); build(); }, 'Assento de operador instalado'), wrap(opw, unit('kg')));
-    if (c.op.inst === 'S') {
-      selRow('cfg-lado', 'Lado do assento de operador', ['LH', 'RH'], () => c.op.lado, v => c.op.lado = v);
-      row(cf, 'Furo do trilho (19 a 41)', document.createElement('span'), numField('cfg-furo', () => c.op.furo, v => c.op.furo = v, v => (Number.isInteger(v) && v >= 19 && v <= 41) ? '' : 'Furo: número inteiro de 19 a 41.', { dec: 0 }));
-      row(cf, 'Massa do assento de operador<small>provisória — confirmar</small>', document.createElement('span'), wrap(numField('cfg-opsw', () => c.op.seatW, v => c.op.seatW = v, v => v < 0 ? 'Valor negativo.' : ''), unit('kg')));
-    }
     update();
   }
 
@@ -658,10 +638,21 @@ if (typeof module !== 'undefined') module.exports = PB;
     const r = PB.compute(S);
     save();
     document.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.anv === S.anv)));
-    $('anvNote').textContent = `${S.anv} — ${r.anvNote}`;
+    $('anvNote').textContent = S.anv === 'PR-RFA' ? 'PR-RFA: dados herdados da planilha original, ainda não conferidos com a ficha de pesagem. ' : '';
     // veredito
-    const v = $('verdict'); v.classList.toggle('bad', r.V !== 'OK'); $('vmsg').textContent = r.msg;
-    $('cW').textContent = f1(r.W_DEP); $('cD').textContent = f1(L.PMD - r.W_DEP); $('cX').textContent = f1(r.X_DEP); $('cF').textContent = f1(r.FUEL_ARR);
+    const where = p => p.fr === 0 ? 'na decolagem' : p.fr === 1 ? 'no pouso' : `em voo, com cerca de ${f0(p.ms)} kg de combustível`;
+    const vm = {
+      ERRO: r.errs.length ? `NÃO CALCULADO — corrija: ${r.errs[0][1]}` : '',
+      PMD: `NÃO DECOLAR — peso acima do máximo de decolagem (excesso de ${f1(r.W_DEP - L.PMD)} kg)`,
+      COMB: `NÃO DECOLAR — combustível insuficiente para o EET (faltam ${f1(-r.FUEL_ARR)} kg)`,
+      FRENTE: `NÃO DECOLAR — CG à frente do limite ${where(r.pF)}`,
+      ATRAS: `NÃO DECOLAR — CG atrás do limite ${where(r.pA)}`,
+      LATERAL: 'NÃO DECOLAR — CG lateral fora do limite',
+      INFERIOR: 'NÃO DECOLAR — fora do envelope (abaixo do limite inferior)',
+      OK: 'DENTRO DO ENVELOPE EM TODO O VOO',
+    }[r.V];
+    const v = $('verdict'); v.classList.toggle('bad', r.V !== 'OK'); $('vmsg').textContent = vm;
+    $('cW').textContent = f1(r.W_DEP); $('cD').textContent = f1(L.PMD - r.W_DEP); $('cF').textContent = f1(r.FUEL_ARR);
     // erros nos campos
     document.querySelectorAll('.err').forEach(e => e.textContent = '');
     const pos = { 'Piloto — cadeira direita (PCD)': 'e-pcd', 'Piloto — cadeira esquerda (PCE)': 'e-pce', 'Tanque principal': 'e-main', 'Supplies': 'e-sup', 'Tanque auxiliar': 'e-aux' };
@@ -688,19 +679,27 @@ if (typeof module !== 'undefined') module.exports = PB;
       ['Preenchimento', r.errs.length === 0, r.errs.length === 0 ? 'Sem erros' : `${r.errs.length} erro(s) — veja os campos em vermelho`, 'ERRO'],
       ['Peso máximo de decolagem (2.910 kg)', r.W_DEP <= L.PMD, r.W_DEP <= L.PMD ? `Sobram ${f1(L.PMD - r.W_DEP)} kg` : `Excesso de ${f1(r.W_DEP - L.PMD)} kg`],
       ['Combustível para o EET', r.FUEL_ARR >= 0, r.FUEL_ARR >= 0 ? `Pouso com ${f1(r.FUEL_ARR)} kg utilizáveis` : `Faltam ${f1(-r.FUEL_ARR)} kg`],
-      ['CG — limite dianteiro (todo o voo)', r.MIN_MF >= 0, `Menor margem ${f1(r.MIN_MF)} mm, ${r.WHERE_F}`],
-      ['CG — limite traseiro (todo o voo)', r.MIN_MA >= 0, `Menor margem ${f1(r.MIN_MA)} mm, ${r.WHERE_A}`],
-      ['CG lateral (±100 mm)', r.MIN_ML >= 0, `Menor margem ${f1(r.MIN_ML)} mm`],
+      ['Centro de gravidade (todo o voo)', !(r.MIN_MF < 0 || r.MIN_MA < 0 || r.MIN_ML < 0 || r.MIN_MI < 0),
+        (r.MIN_MF < 0 || r.MIN_MA < 0 || r.MIN_ML < 0 || r.MIN_MI < 0) ? 'Fora do envelope — veja as fases abaixo' : 'Dentro do envelope em todas as fases'],
     ];
     $('checks').innerHTML = ck.map(([t, ok, d, bad]) => `<tr><td>${t}</td><td><span class="pill ${ok ? '' : 'bad'}">${ok ? 'OK' : (bad || 'FORA')}</span></td><td class="cond ${ok ? '' : 'bad'}">${esc(d)}</td></tr>`).join('');
     // fases
     const b = $('envBanner'); b.classList.toggle('bad', r.ENV_OUT);
     b.textContent = r.ENV_OUT ? 'ENVELOPE EM VERMELHO: CONFIGURAÇÃO FORA DOS LIMITES' : 'Configuração dentro dos limites em todas as fases';
-    $('phases').innerHTML = [['Decolagem', r.ph.D], ['Em voo (pior ponto)', r.ph.V], ['Pouso', r.ph.P]]
-      .map(([t, p]) => `<tr><td>${t}</td><td><span class="pill ${p.out ? 'bad' : ''}">${p.out ? 'FORA' : 'OK'}</span></td><td class="cond ${p.out ? 'bad' : ''}">${esc(p.text)}</td></tr>`).join('');
+    const sum = (p, fase) => {
+      if (!p.out) return 'Dentro do envelope';
+      const c = [];
+      if (fase === 'D' && r.W_DEP > L.PMD) c.push(`peso acima do máximo (excesso de ${f1(r.W_DEP - L.PMD)} kg)`);
+      if (p.mf < 0) c.push('CG à frente do limite' + (fase === 'V' ? ` (pior ponto com cerca de ${f0(p.ffuel)} kg de combustível)` : ''));
+      if (p.ma < 0) c.push('CG atrás do limite' + (fase === 'V' ? ` (pior ponto com cerca de ${f0(p.afuel)} kg de combustível)` : ''));
+      if (p.ml < 0) c.push('CG lateral fora do limite');
+      if (p.mi < 0) c.push('abaixo do limite inferior');
+      const t = c.join('; '); return 'Fora: ' + t;
+    };
+    $('phases').innerHTML = [['Decolagem', r.ph.D, 'D'], ['Em voo', r.ph.V, 'V'], ['Pouso', r.ph.P, 'P']]
+      .map(([t, p, k]) => `<tr><td>${t}</td><td><span class="pill ${p.out ? 'bad' : ''}">${p.out ? 'FORA' : 'OK'}</span></td><td class="cond ${p.out ? 'bad' : ''}">${esc(sum(p, k))}</td></tr>`).join('');
     // números
-    const nums = [['Peso (kg)', r.W_DEP, r.W_ARR], ['CG longitudinal (mm)', r.X_DEP, r.X_ARR], ['Limite dianteiro (mm)', r.LFD, r.LFA], ['Limite traseiro (mm)', r.LAD, r.LAA],
-      ['CG lateral (mm, + = direita)', r.Y_DEP, r.Y_ARR], ['Combustível a bordo (kg)', r.fuelDep, r.fuelArr]];
+    const nums = [['Peso (kg)', r.W_DEP, r.W_ARR], ['Combustível a bordo (kg)', r.fuelDep, r.fuelArr]];
     $('nums').innerHTML = nums.map(([t, a, c]) => `<tr><td>${t}</td><td class="v">${f1(a)}</td><td class="v">${f1(c)}</td></tr>`).join('') +
       `<tr><td><b>Disponibilidade até o PMD (kg)</b></td><td class="v">${f1(L.PMD - r.W_DEP)}</td><td></td></tr>`;
     // autonomia
@@ -724,9 +723,9 @@ if (typeof module !== 'undefined') module.exports = PB;
     const css = getComputedStyle(document.documentElement);
     const col = n => css.getPropertyValue(n).trim();
     let g = '';
-    for (let x = x0; x <= x1; x += 50) g += `<line class="grid" x1="${sx(x)}" x2="${sx(x)}" y1="${sy(y0)}" y2="${sy(y1)}"/>` + (x % 100 === 0 ? `<text x="${sx(x)}" y="${H - m.b + 16}" text-anchor="middle">${x.toLocaleString('pt-BR')}</text>` : '');
+    for (let x = x0; x <= x1; x += 50) g += `<line class="grid" x1="${sx(x)}" x2="${sx(x)}" y1="${sy(y0)}" y2="${sy(y1)}"/>` + '';
     for (let y = y0; y <= y1; y += 100) g += `<line class="grid" x1="${sx(x0)}" x2="${sx(x1)}" y1="${sy(y)}" y2="${sy(y)}"/>` + (y % 250 === 0 ? `<text x="${m.l - 6}" y="${sy(y) + 4}" text-anchor="end">${y.toLocaleString('pt-BR')}</text>` : '');
-    g += `<text x="${(W + m.l) / 2}" y="${H - 6}" text-anchor="middle">CG longitudinal (mm)</text><text transform="translate(12 ${(H - m.b) / 2}) rotate(-90)" text-anchor="middle">Peso (kg)</text>`;
+    g += `<text x="${m.l + 4}" y="${H - 14}" text-anchor="start">◀ CG mais à frente</text><text x="${W - m.r - 4}" y="${H - 14}" text-anchor="end">CG mais atrás ▶</text><text transform="translate(12 ${(H - m.b) / 2}) rotate(-90)" text-anchor="middle">Peso (kg)</text>`;
     const envCol = r.ENV_OUT ? col('--bad') : col('--accent');
     const poly = PB.POLY.map(([x, y]) => `${sx(x)},${sy(y)}`).join(' ');
     g += `<polygon points="${poly}" fill="${envCol}" fill-opacity="${r.ENV_OUT ? 0.10 : 0.06}" stroke="${envCol}" stroke-width="${r.ENV_OUT ? 4 : 2.5}" stroke-linejoin="round"/>`;
@@ -734,8 +733,8 @@ if (typeof module !== 'undefined') module.exports = PB;
     g += `<polyline points="${path(r.traj.A)}" fill="none" stroke="${col('--traj-a')}" stroke-width="3.5" stroke-linecap="round"/>`;
     g += `<polyline points="${path(r.traj.F)}" fill="none" stroke="${col('--traj-f')}" stroke-width="2" stroke-dasharray="6 4"/>`;
     const dx = sx(r.X_DEP), dy = sy(r.W_DEP), ax = sx(r.X_ARR), ay = sy(r.W_ARR);
-    g += `<circle cx="${dx}" cy="${dy}" r="7" fill="${col('--accent')}" stroke="${col('--surface')}" stroke-width="2"><title>Decolagem: ${f1(r.W_DEP)} kg, ${f1(r.X_DEP)} mm</title></circle>`;
-    g += `<polygon points="${ax},${ay - 8} ${ax - 7},${ay + 6} ${ax + 7},${ay + 6}" fill="${col('--bad')}" stroke="${col('--surface')}" stroke-width="1.5"><title>Pouso: ${f1(r.W_ARR)} kg, ${f1(r.X_ARR)} mm</title></polygon>`;
+    g += `<circle cx="${dx}" cy="${dy}" r="7" fill="${col('--accent')}" stroke="${col('--surface')}" stroke-width="2"><title>Decolagem: ${f1(r.W_DEP)} kg</title></circle>`;
+    g += `<polygon points="${ax},${ay - 8} ${ax - 7},${ay + 6} ${ax + 7},${ay + 6}" fill="${col('--bad')}" stroke="${col('--surface')}" stroke-width="1.5"><title>Pouso: ${f1(r.W_ARR)} kg</title></polygon>`;
     $('chart').innerHTML = g;
     $('lgEnv').style.borderColor = envCol;
   }
@@ -747,10 +746,8 @@ if (typeof module !== 'undefined') module.exports = PB;
 })();
 </script>
 <script>
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').then(reg => {
-    const tag = document.getElementById('offTag'); if (tag) tag.textContent = 'Disponível offline';
-  }).catch(() => {}));
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost') && !/claude\.ai|claudeusercontent/.test(location.hostname)) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').then(() => { const t = document.getElementById('offTag'); if (t) t.textContent = 'Disponível offline'; }).catch(() => {}));
 }
 </script>
 </body>
