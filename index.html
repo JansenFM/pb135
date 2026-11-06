@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="P&amp;B EC135">
+<title>Peso e Balanceamento EC 135</title>
+<meta name="theme-color" content="#1c4f96">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+
+<style>
+:root {
+  /* Painel de cabine: azul-marinho de instrumento, branco de ficha técnica, âmbar só nos campos de preenchimento.
+     Layout: coluna de entradas à esquerda, resultado fixo à direita (iPad deitado); uma coluna no iPad em pé. */
+  --bg: #eaeef3;
+  --surface: #ffffff;
+  --ink: #0e1c2f;
+  --muted: #56677d;
+  --line: #d3dbe5;
+  --accent: #1c4f96;
+  --input: #fff6dc;
+  --input-line: #e2c873;
+  --ok: #17803a;
+  --ok-bg: #e3f4e8;
+  --bad: #c42a22;
+  --bad-bg: #fde7e5;
+  --warn: #a35f00;
+  --disabled: #e3e7ec;
+  --traj-a: #e07a1f;
+  --traj-f: #1f9e57;
+  --font-display: -apple-system, "SF Pro Display", system-ui, "Segoe UI", sans-serif;
+  --font-body: -apple-system, "SF Pro Text", system-ui, "Segoe UI", sans-serif;
+  --radius: 10px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0b1420; --surface: #13202f; --ink: #e6edf5; --muted: #9aabbf; --line: #26384d; --accent: #7fb0f2;
+    --input: #2b2614; --input-line: #7a6627; --ok: #5fd08a; --ok-bg: #12301f; --bad: #ff7b6e; --bad-bg: #3a1714; --warn: #f0b04a;
+    --disabled: #1b2a3b; --traj-a: #f19a4c; --traj-f: #4cc883; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0b1420; --surface: #13202f; --ink: #e6edf5; --muted: #9aabbf; --line: #26384d; --accent: #7fb0f2;
+  --input: #2b2614; --input-line: #7a6627; --ok: #5fd08a; --ok-bg: #12301f; --bad: #ff7b6e; --bad-bg: #3a1714; --warn: #f0b04a;
+  --disabled: #1b2a3b; --traj-a: #f19a4c; --traj-f: #4cc883; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; -webkit-text-size-adjust: 100%; }
+body { padding: env(safe-area-inset-top) max(16px, env(safe-area-inset-right)) env(safe-area-inset-bottom) max(16px, env(safe-area-inset-left)); }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; }
+.num, input, td.v, .chip b { font-variant-numeric: tabular-nums; }
+
+header.top { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 14px 0 10px; }
+header.top h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: .01em; }
+header.top .sub { color: var(--muted); font-size: .85rem; }
+.seg { display: inline-flex; border: 1.5px solid var(--accent); border-radius: 9px; overflow: hidden; }
+.seg button { font: 600 1rem var(--font-display); padding: 9px 16px; min-height: 44px; border: 0; background: transparent; color: var(--accent); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--surface); }
+.spacer { flex: 1; }
+.btn { font: 500 .95rem var(--font-body); min-height: 44px; padding: 8px 14px; border-radius: 9px; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+.btn:focus-visible, input:focus-visible, select:focus-visible, button:focus-visible, .sw input:focus-visible + span { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+.verdict { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; padding: 12px 16px; border-radius: var(--radius);
+  background: var(--ok-bg); border: 2px solid var(--ok); color: var(--ok); margin-bottom: 14px; box-shadow: 0 4px 14px rgb(0 0 0 / .08); }
+.verdict.bad { background: var(--bad-bg); border-color: var(--bad); color: var(--bad); }
+.verdict .msg { font: 700 1.15rem/1.25 var(--font-display); flex: 1 1 340px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 5px 10px; font-size: .82rem; white-space: nowrap; }
+.chip b { font-size: .95rem; }
+
+main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; padding-bottom: 32px; }
+@media (min-width: 1000px) { main { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); align-items: start; } .results { position: sticky; top: 92px; max-height: calc(100vh - 100px); overflow-y: auto; } }
+.col { display: grid; gap: 16px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px 16px; }
+.card h2 { font-size: 1.05rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--accent); margin-bottom: 10px; }
+.card h2 small { text-transform: none; letter-spacing: 0; color: var(--muted); font: 400 .8rem var(--font-body); margin-left: 6px; }
+
+.rows { display: grid; gap: 2px; }
+.row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.row:last-child { border-bottom: 0; }
+.row .lbl { font-size: .95rem; }
+.row .lbl small { display: block; color: var(--muted); font-size: .78rem; }
+.row .err { grid-column: 1 / -1; color: var(--bad); font-weight: 600; font-size: .85rem; }
+.row .hint { grid-column: 1 / -1; color: var(--accent); font-weight: 600; font-size: .85rem; }
+input[type="text"], select { font: 500 1.05rem var(--font-body); min-height: 44px; border-radius: 8px; border: 1.5px solid var(--input-line); background: var(--input); color: var(--ink); padding: 6px 10px; }
+input.n { width: 104px; text-align: right; }
+input.name { width: 100%; }
+input:disabled, select:disabled { background: var(--disabled); border-color: var(--line); color: var(--muted); }
+input.reject { animation: shake .3s; border-color: var(--bad); }
+@keyframes shake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+@media (prefers-reduced-motion: reduce) { input.reject { animation: none; } }
+.unit { color: var(--muted); font-size: .85rem; min-width: 30px; }
+.sw { position: relative; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; min-height: 44px; }
+.sw input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.sw span { width: 52px; height: 30px; border-radius: 15px; background: var(--line); position: relative; transition: background .15s; }
+.sw span::after { content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: var(--surface); box-shadow: 0 1px 3px rgb(0 0 0 / .3); transition: left .15s; }
+.sw input:checked + span { background: var(--accent); }
+.sw input:checked + span::after { left: 25px; }
+.sw em { font-style: normal; font-size: .8rem; color: var(--muted); width: 26px; }
+.total { display: flex; justify-content: space-between; font-weight: 600; padding-top: 8px; }
+
+.mats { display: grid; gap: 0; }
+.mat { display: grid; grid-template-columns: minmax(0, 1fr) 70px 128px 150px; gap: 8px; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--line); }
+.mat .kg { color: var(--muted); text-align: right; font-size: .9rem; }
+.mat input.kgi { width: 70px; text-align: right; }
+.step { display: inline-grid; grid-template-columns: 40px 44px 40px; border: 1.5px solid var(--input-line); border-radius: 8px; overflow: hidden; background: var(--input); }
+.step button { border: 0; background: transparent; font: 600 1.2rem var(--font-body); color: var(--accent); min-height: 42px; cursor: pointer; }
+.step output { display: grid; place-items: center; font-weight: 600; }
+.mat select { width: 150px; }
+.mat .err { grid-column: 1 / -1; color: var(--bad); font-weight: 600; font-size: .85rem; }
+@media (max-width: 560px) { .mat { grid-template-columns: minmax(0, 1fr) 128px; } .mat .kg, .mat .kgw { grid-column: 1; } .mat select { width: 100%; grid-column: 1 / -1; } }
+
+table.t { width: 100%; border-collapse: collapse; font-size: .93rem; }
+table.t th { text-align: left; font: 600 .78rem var(--font-body); color: var(--muted); text-transform: uppercase; letter-spacing: .04em; padding: 4px 6px; border-bottom: 1.5px solid var(--line); }
+table.t td { padding: 7px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.t td.v { text-align: right; font-weight: 600; white-space: nowrap; }
+.pill { display: inline-block; min-width: 56px; text-align: center; font: 700 .8rem var(--font-display); letter-spacing: .05em; padding: 4px 8px; border-radius: 6px; background: var(--ok-bg); color: var(--ok); border: 1px solid var(--ok); }
+.pill.bad { background: var(--bad-bg); color: var(--bad); border-color: var(--bad); }
+td.cond { font-size: .86rem; }
+td.cond.bad { color: var(--bad); font-weight: 600; }
+.banner { border-radius: 8px; padding: 8px 12px; font-weight: 700; font-size: .9rem; text-align: center; margin-bottom: 8px; background: var(--ok-bg); color: var(--ok); border: 1px solid var(--ok); }
+.banner.bad { background: var(--bad-bg); color: var(--bad); border-color: var(--bad); }
+svg.chart { width: 100%; height: auto; display: block; }
+svg.chart text { fill: var(--muted); font: 11px var(--font-body); }
+svg.chart .grid { stroke: var(--line); stroke-width: 1; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .8rem; color: var(--muted); margin-top: 6px; }
+.legend i { display: inline-block; width: 22px; height: 0; border-top: 3px solid; vertical-align: middle; margin-right: 6px; }
+.alerts { margin: 0; padding-left: 18px; color: var(--bad); font-weight: 600; font-size: .9rem; display: grid; gap: 4px; }
+.alerts.none { color: var(--ok); list-style: none; padding-left: 0; }
+.amsg { margin-top: 8px; font-weight: 600; color: var(--accent); font-size: .92rem; }
+details.cfg summary { cursor: pointer; font: 700 1.05rem var(--font-display); color: var(--muted); text-transform: uppercase; letter-spacing: .04em; min-height: 44px; display: flex; align-items: center; }
+details.cfg p { color: var(--muted); font-size: .85rem; margin: 4px 0 10px; }
+.note { color: var(--muted); font-size: .8rem; margin-top: 6px; }
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--ink); color: var(--surface); padding: 12px 16px; border-radius: 10px; max-width: min(560px, 92vw); font-weight: 500; box-shadow: 0 8px 24px rgb(0 0 0 / .25); z-index: 20; display: none; }
+.toast.show { display: block; }
+.modal { position: fixed; inset: 0; background: rgb(0 0 0 / .45); display: none; place-items: center; z-index: 30; padding: 16px; }
+.modal.show { display: grid; }
+.modal .box { background: var(--surface); color: var(--ink); border-radius: 12px; padding: 18px; max-width: 420px; display: grid; gap: 12px; }
+.modal .acts { display: flex; gap: 10px; justify-content: flex-end; }
+.btn.primary { background: var(--accent); color: var(--surface); border-color: var(--accent); }
+footer { color: var(--muted); font-size: .78rem; padding: 0 0 24px; max-width: 80ch; }
+</style>
+</head>
+<body>
+<header class="top">
+  <div>
+    <h1>Peso e Balanceamento — EC 135 T2+</h1>
+    <div class="sub"><span id="anvNote"></span> · <span id="offTag">Preparando uso offline…</span></div>
+  </div>
+  <div class="seg" role="group" aria-label="Aeronave">
+    <button type="button" id="anv-PR-RFA" data-anv="PR-RFA">PR-RFA</button>
+    <button type="button" id="anv-PR-RFC" data-anv="PR-RFC">PR-RFC</button>
+  </div>
+  <div class="spacer"></div>
+  <button type="button" class="btn" id="resetBtn">Restaurar padrão</button>
+</header>
+
+<section class="verdict" id="verdict" aria-live="polite">
+  <div class="msg" id="vmsg"></div>
+  <div class="chips">
+    <span class="chip">Decolagem <b id="cW"></b> kg</span>
+    <span class="chip">Disponível <b id="cD"></b> kg</span>
+    <span class="chip">CG <b id="cX"></b> mm</span>
+    <span class="chip">Pouso <b id="cF"></b> kg comb.</span>
+  </div>
+</section>
+
+<main>
+  <div class="col inputs">
+    <section class="card">
+      <h2>Peso em cada posição <small>pessoa ou carga, com vestuário e capacete</small></h2>
+      <div class="rows" id="posRows"></div>
+      <div class="total"><span>Total nas posições</span><span class="num" id="posTotal"></span></div>
+    </section>
+
+    <section class="card">
+      <h2>Equipamentos instalados</h2>
+      <div class="rows" id="eqRows"></div>
+    </section>
+
+    <section class="card">
+      <h2>Combustível <small>kg utilizáveis</small></h2>
+      <div class="rows" id="fuelRows"></div>
+      <div class="total"><span>Total a bordo</span><span class="num" id="fuelTotal"></span></div>
+    </section>
+
+    <section class="card">
+      <h2>Consumo e tempo de voo</h2>
+      <div class="rows" id="consRows"></div>
+    </section>
+
+    <section class="card">
+      <h2>Materiais embarcados <small>padrão Ceoar já preenchido</small></h2>
+      <div class="mats" id="matRows"></div>
+      <div class="total"><span>Total de materiais</span><span class="num" id="matTotal"></span></div>
+    </section>
+
+    <section class="card">
+      <details class="cfg">
+        <summary>Configuração técnica</summary>
+        <p>Alterar só com documento de suporte (FLM, FMS ou ficha de pesagem).</p>
+        <div class="rows" id="cfgRows"></div>
+      </details>
+    </section>
+  </div>
+
+  <div class="col results">
+    <section class="card">
+      <h2>Verificações</h2>
+      <table class="t"><tbody id="checks"></tbody></table>
+    </section>
+
+    <section class="card">
+      <h2>Envelope por fase</h2>
+      <div class="banner" id="envBanner"></div>
+      <table class="t"><thead><tr><th>Fase</th><th>Situação</th><th>Condição</th></tr></thead><tbody id="phases"></tbody></table>
+      <svg class="chart" id="chart" viewBox="0 0 560 400" role="img" aria-label="Envelope longitudinal do CG"></svg>
+      <div class="legend">
+        <span><i id="lgEnv" style="border-color: var(--accent)"></i>Envelope (FLM Fig. 6-2)</span>
+        <span><i style="border-color: var(--traj-a)"></i>CG em voo: auxiliar esvaziado primeiro</span>
+        <span><i style="border-color: var(--traj-f); border-top-style: dashed"></i>CG em voo: auxiliar transferido de imediato</span>
+      </div>
+      <div class="note">As duas linhas de voo só se separam quando há combustível no auxiliar. Círculo = decolagem; triângulo = pouso.</div>
+    </section>
+
+    <section class="card">
+      <h2>Números do voo</h2>
+      <table class="t"><thead><tr><th></th><th style="text-align:right">Decolagem</th><th style="text-align:right">Pouso</th></tr></thead><tbody id="nums"></tbody></table>
+    </section>
+
+    <section class="card">
+      <h2>Autonomia</h2>
+      <table class="t"><tbody id="aut"></tbody></table>
+      <div class="amsg" id="autMsg"></div>
+    </section>
+
+    <section class="card">
+      <h2>Alertas</h2>
+      <ul class="alerts" id="alerts"></ul>
+    </section>
+  </div>
+</main>
+
+<footer>
+  Cálculo idêntico à planilha "PB_EC135_Ceoar v5" (FLM EC 135 T2+ Seção 6, ficha Helisul PR-RFC de 20/02/2025, FMS 9.2-25 Rev. 2), validado em 472 cenários.
+  Ferramenta de apoio ao planejamento: a responsabilidade pelo peso e balanceamento é do piloto em comando.
+  Os dados ficam salvos só neste aparelho. Versão offline 1.0 (06/11/2026).
+</footer>
+
+<div class="toast" id="toast" role="alert"></div>
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="box">
+    <strong id="modalTitle">Restaurar os valores padrão?</strong>
+    <span>Pesos, equipamentos, combustível, consumos e materiais voltam ao padrão Ceoar.</span>
+    <div class="acts"><button type="button" class="btn" id="mNo">Cancelar</button><button type="button" class="btn primary" id="mYes">Restaurar</button></div>
+  </div>
+</div>
+
+<script>
+/* Motor de cálculo — Peso e Balanceamento EC 135 T2+ (réplica da planilha Ceoar v5) */
+const PB = (() => {
+  const ANV = {
+    'PR-RFA': { W: 1873.06, MX: 1873.06 * 4495, MY: 0, flirModel: 'Ultra 8500', flir: [18.4, 1980], estante: [11, 3413], prov: [15, 3260],
+                sx16: [30, 2003], floats: [49.5, 4358], auxtk: [35.2, 5100], auxX: 5000, note: 'Dados herdados da planilha original (não auditados)' },
+    'PR-RFC': { W: 1876.42, MX: 8437660, MY: 8520, flirModel: 'StarSafire 380HD', flir: [47.4, 1992.7], estante: [15, 3413], prov: [23.61, 3260],
+                sx16: [30, 2003], floats: [49.5, 4358], auxtk: [35.2, 5100], auxX: 5000, note: 'Ficha Helisul PR-RFC 001 (20/02/2025)' },
+  };
+  const SEAT_MODEL = { H110: 2428, H140: 2412, H160: 2439 };
+  const SEATS = [
+    { id: 'fwdL', name: 'Banco dianteiro esquerdo (de costas)', x: 3331, y: -479 },
+    { id: 'fwdR', name: 'Banco dianteiro direito (de costas)', x: 3331, y: 479 },
+    { id: 'aftL', name: 'Banco traseiro esquerdo', x: 4243, y: -408 },
+    { id: 'aftM', name: 'Banco traseiro central', x: 4243, y: 0 },
+    { id: 'aftR', name: 'Banco traseiro direito', x: 4243, y: 408 },
+  ];
+  const HOLES = [3684, 3709, 3735, 3760, 3786, 3811, 3836, 3862, 3887, 3913, 3938, 3963, 3988, 4014, 4040, 4065, 4090, 4116, 4141, 4167, 4192, 4217, 4243];
+  const LOCS = ['Cabine dos pilotos', 'Frente', 'Meio', 'Trás', 'Bagageiro'];
+  const LOC_X = { 'Frente': 3558, 'Meio': 4320, 'Trás': 4955, 'Bagageiro': 5000 };
+  const ITEMS = [['Manuais Airbus', 4.1, 1, 'Meio'], ['Checklists Ceoar', 1.8, 1, 'Frente'], ['Documentos obrigatórios', 1.6, 1, 'Meio'], ['MAPO', 1.2, 1, 'Meio'],
+    ['Diário de bordo', 0.5, 1, 'Meio'], ['Material do FLIR', 0.7, 1, 'Trás'], ['iPad reserva', 1.2, 1, 'Meio'], ['Fone antigo', 1.0, 0, ''],
+    ['Fone novo', 0.6, 2, 'Cabine dos pilotos'], ['Sacola de bloqueios', 13.9, 1, 'Bagageiro'], ['Copo coletor', 1.1, 1, 'Bagageiro'],
+    ['Bateria portátil', 8.1, 0, ''], ['Para-sol', 1.1, 0, ''], ['Garrafa de lavagem do compressor', 7.4, 0, ''], ['Rodas (par)', 56.0, 0, ''],
+    ['EcoFlow (bateria + acessórios)', 9.6, 0, ''], ['Bote salva-vidas RAF1108', 16.6, 0, ''], ['Colete salva-vidas Switlik', 1.8, 0, ''],
+    ['Fonte externa', 0, 0, ''], ['Outro 1', 0, 0, ''], ['Outro 2', 0, 0, ''], ['Outro 3', 0, 0, ''], ['Outro 4', 0, 0, ''], ['Outro 5', 0, 0, '']];
+  const EDITABLE_FROM = 18; // índice a partir do qual nome e kg/un são editáveis
+  const FUEL = [[0, 4953, -36], [8, 4953, -36], [16, 4960, -36], [24, 4969, -36], [32, 4978, -36], [40, 4987, -36], [48, 4996, -36], [56, 5004, -31], [64, 5011, -27], [72, 5019, -24], [80, 5026, -22], [88, 5033, -20], [96, 5040, -18], [104, 4953, -16], [112, 4877, -15], [120, 4809, -14], [128, 4751, -13], [136, 4702, -13], [144, 4659, -12], [152, 4618, -11], [160, 4583, -11], [168, 4551, -10], [176, 4523, -10], [184, 4495, -9], [192, 4471, -9], [200, 4449, -9], [208, 4429, -8], [216, 4410, -8], [224, 4393, -8], [232, 4377, -7], [240, 4362, -7], [248, 4348, -7], [256, 4335, -7], [264, 4322, -7], [272, 4310, -6], [280, 4299, -6], [288, 4289, -6], [296, 4279, -6], [304, 4270, -6], [312, 4261, -6], [320, 4252, -5], [328, 4244, -5], [336, 4237, -5], [344, 4230, -5], [352, 4223, -5], [360, 4216, -5], [368, 4210, -5], [376, 4204, -5], [384, 4198, -5], [392, 4193, -4], [400, 4187, -4], [408, 4182, -4], [416, 4179, -4], [424, 4182, -4], [432, 4185, -4], [440, 4188, -4], [448, 4190, -4], [456, 4193, -4], [464, 4195, -4], [472, 4198, -4], [480, 4200, -4], [488, 4202, -4], [496, 4204, -4], [504, 4206, -4], [512, 4209, -4], [520, 4211, -4], [528, 4213, -4], [536.4, 4215, -4], [544, 4217, -4], [552, 4218, -4], [560, 4220, -4], [560.4, 4220, -4], [99999, 4220, -4]];
+  const LIM = { PMD: 2910, LF1_X: 4187, LF1_W: 2000, LF2_X: 4227.3, LF2_W: 2910, LA1_X: 4369, LA1_W: 2910, LA2_X: 4555, LA2_W: 1600,
+                D_W: 1843, C_W: 1505, LAT: 100, AUX_MIN: 70, PESO_MIN: 60, MAX_MAIN: 471.1, MAX_SUP: 89.3, MAX_AUX: 169.5 };
+  const fwdLim = w => LIM.LF1_X + (w - LIM.LF1_W) * (LIM.LF2_X - LIM.LF1_X) / (LIM.LF2_W - LIM.LF1_W);
+  const aftLim = w => LIM.LA1_X + (LIM.LA1_W - w) * (LIM.LA2_X - LIM.LA1_X) / (LIM.LA1_W - LIM.LA2_W);
+  const D_X = fwdLim(LIM.D_W), C_X = aftLim(LIM.C_W);
+  const wMin = x => LIM.D_W + (x - D_X) * (LIM.C_W - LIM.D_W) / (C_X - D_X);
+  const POLY = [[LIM.LF2_X, LIM.LF2_W], [LIM.LA1_X, LIM.LA1_W], [C_X, LIM.C_W], [D_X, LIM.D_W], [LIM.LF2_X, LIM.LF2_W]];
+
+  const isNum = v => typeof v === 'number' && isFinite(v);
+  const N = v => (isNum(v) ? v : 0);
+  const R1 = v => Math.round(v * 10) / 10;
+
+  function fuelArm(ms) { // MATCH aproximado + interpolação linear, como na planilha
+    let i = 0;
+    for (let k = 0; k < FUEL.length; k++) { if (FUEL[k][0] <= ms) i = k; else break; }
+    const a = FUEL[i], b = FUEL[Math.min(i + 1, FUEL.length - 1)];
+    const t = b[0] === a[0] ? 0 : (ms - a[0]) / (b[0] - a[0]);
+    return [a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+  }
+
+  function defaults() {
+    return {
+      anv: 'PR-RFC', pcd: 80, pce: 80,
+      seats: SEATS.map((s, i) => ({ inst: i === 2 ? 'S' : 'N', w: i === 2 ? 80 : 0 })),
+      equip: { estante: 'N', flir: 'N', sx16: 'N', floats: 'N', auxtk: 'N' },
+      mats: ITEMS.map(([name, kg, qty, loc]) => ({ name, kg, qty, loc })),
+      main: 471.1, sup: 89.3, aux: 0, acion: 15, taxi: 15, proc: 0, eetT: 60, ct: 195, eetV: 0, cv: 170,
+      cfg: { assento: 'H110', prov: 'N', seatW: 11, dens: 0.785, op: { inst: 'N', w: 0, lado: 'LH', furo: 30, seatW: 11 } },
+    };
+  }
+
+  function errors(s) {
+    const e = [];
+    if (!ANV[s.anv]) e.push(['Aeronave', 'Escolha PR-RFA ou PR-RFC']);
+    [['pcd', 'Piloto — cadeira direita (PCD)'], ['pce', 'Piloto — cadeira esquerda (PCE)']].forEach(([k, nm]) => {
+      if (!isNum(s[k])) e.push([nm, 'Informe o peso do piloto']);
+      else if (s[k] < LIM.PESO_MIN) e.push([nm, `Piloto abaixo de ${LIM.PESO_MIN} kg`]);
+    });
+    s.seats.forEach((st, i) => {
+      const w = st.w, nm = SEATS[i].name;
+      if (st.inst !== 'S' && st.inst !== 'N') e.push([nm, 'Informe S ou N']);
+      else if (w !== null && w !== '' && w !== undefined && !isNum(w)) e.push([nm, 'Peso inválido']);
+      else if (N(w) < 0) e.push([nm, 'Peso negativo']);
+      else if (st.inst === 'N' && N(w) > 0) e.push([nm, 'Banco não instalado: peso deve ser 0 (carga solta vai em Materiais)']);
+    });
+    Object.entries(s.equip).forEach(([k, v]) => { if (v !== 'S' && v !== 'N') e.push([k, 'Informe S ou N']); });
+    s.mats.forEach(m => {
+      if (!isNum(m.qty) || !isNum(m.kg)) e.push([m.name, 'Número inválido']);
+      else if (m.qty < 0 || m.kg < 0) e.push([m.name, 'Valor negativo']);
+      else if (m.qty > 0 && !m.loc) e.push([m.name, 'Informe o local']);
+      else if (m.qty > 0 && m.kg <= 0) e.push([m.name, 'Informe os kg por unidade']);
+      else if (m.loc && !LOCS.includes(m.loc)) e.push([m.name, 'Local inválido']);
+    });
+    if (!isNum(s.main) || s.main < 0 || s.main > LIM.MAX_MAIN + 0.001) e.push(['Tanque principal', `Principal: 0 a ${LIM.MAX_MAIN} kg`]);
+    if (!isNum(s.sup) || s.sup < 0 || s.sup > LIM.MAX_SUP + 0.001) e.push(['Supplies', `Supplies: 0 a ${LIM.MAX_SUP} kg`]);
+    const aux = s.aux;
+    if ((aux !== null && aux !== '' && aux !== undefined && !isNum(aux)) || N(aux) < 0 || N(aux) > LIM.MAX_AUX + 0.001 || (N(aux) > 0 && N(aux) < LIM.AUX_MIN))
+      e.push(['Tanque auxiliar', `Auxiliar: 0, ou de ${LIM.AUX_MIN} a ${LIM.MAX_AUX} kg`]);
+    else if (N(aux) > 0 && s.equip.auxtk !== 'S') e.push(['Tanque auxiliar', 'Combustível no auxiliar sem o tanque instalado']);
+    const cons = [s.acion, s.taxi, s.proc, s.eetT, s.eetV, s.ct, s.cv];
+    if (cons.some(v => !isNum(v)) || Math.min(...cons.map(N)) < 0) e.push(['Consumo e tempo de voo', 'Consumos e EET: números ≥ 0']);
+    const c = s.cfg, op = c.op;
+    let ce = '';
+    if (!(c.assento in SEAT_MODEL)) ce = 'Configuração: modelo de assento inválido';
+    else if (c.prov !== 'S' && c.prov !== 'N') ce = 'Configuração: provisões fixas S/N';
+    else if (!isNum(c.seatW) || c.seatW < 0 || !isNum(c.dens) || c.dens <= 0) ce = 'Configuração: massa do banco ou densidade inválida';
+    else if (op.inst !== 'S' && op.inst !== 'N') ce = 'Assento de operador: informe S ou N';
+    else if (op.w !== null && op.w !== '' && !isNum(op.w)) ce = 'Assento de operador: peso inválido';
+    else if (N(op.w) < 0) ce = 'Assento de operador: peso negativo';
+    else if (op.inst === 'N' && N(op.w) > 0) ce = 'Assento de operador não instalado: peso deve ser 0';
+    else if (op.inst === 'S' && ((op.lado !== 'LH' && op.lado !== 'RH') || !(op.furo >= 19 && op.furo <= 41 && Number.isInteger(op.furo)))) ce = 'Assento de operador: informe lado e furo (19 a 41)';
+    if (ce) e.unshift(['Configuração', ce]);
+    return e;
+  }
+
+  function compute(s) {
+    const a = ANV[s.anv] || ANV['PR-RFC'];
+    const c = s.cfg, op = c.op;
+    const pilX = SEAT_MODEL[c.assento] || 2428;
+    const items = [];
+    const add = (name, m, x, y = 0) => items.push({ name, m, x, y, mx: m * x, my: m * y });
+    add('Peso vazio básico', a.W, a.MX / a.W, a.MY / a.W);
+    add('Piloto PCD', N(s.pcd), pilX, 390);
+    add('Piloto PCE', N(s.pce), pilX, -390);
+    s.seats.forEach((st, i) => add(SEATS[i].name, N(st.w), SEATS[i].x, SEATS[i].y));
+    s.seats.forEach((st, i) => { if (st.inst === 'S') add('Estrutura — ' + SEATS[i].name, N(c.seatW), SEATS[i].x, SEATS[i].y); });
+    if (op.inst === 'S') {
+      const hx = (op.furo >= 19 && op.furo <= 41 && Number.isInteger(op.furo)) ? HOLES[op.furo - 19] : 0;
+      const oy = op.lado === 'RH' ? 313 : -313;
+      add('Assento de operador — peso', N(op.w), hx, oy);
+      add('Assento de operador — estrutura', N(op.seatW), hx + 200, oy);
+    }
+    [['estante', 'Estante do FLIR'], ['flir', 'FLIR (torre)'], ['sx16', 'Farol SX-16'], ['floats', 'Flutuadores'], ['auxtk', 'Tanque auxiliar']]
+      .forEach(([k, nm]) => { if (s.equip[k] === 'S') add(nm, a[k][0], a[k][1]); });
+    if (c.prov === 'S') add('Provisões fixas do FLIR', a.prov[0], a.prov[1]);
+    LOCS.forEach(L => {
+      const m = s.mats.reduce((t, it) => t + (it.loc === L && isNum(it.kg) && isNum(it.qty) ? it.kg * it.qty : 0), 0);
+      if (m) add('Materiais — ' + L, m, L === 'Cabine dos pilotos' ? pilX : LOC_X[L]);
+    });
+    const ZW = items.reduce((t, i) => t + i.m, 0), ZMX = items.reduce((t, i) => t + i.mx, 0), ZMY = items.reduce((t, i) => t + i.my, 0);
+
+    const auxIn = N(s.aux);
+    const AU = auxIn >= LIM.AUX_MIN ? auxIn : 0, TRAP = auxIn - AU;
+    const MS0 = Math.max(N(s.main) + N(s.sup) - N(s.acion), 0);
+    const BURN = N(s.taxi) + N(s.eetT) / 60 * N(s.ct) + N(s.eetV) / 60 * N(s.cv) + N(s.proc);
+    const FUEL_ARR = AU + MS0 - BURN;
+
+    const traj = { A: [], F: [] };
+    for (const mode of ['A', 'F']) {
+      for (let i = 0; i <= 100; i++) {
+        const fr = Math.round(i / 100 * 10000) / 10000, b = fr * BURN;
+        let ax, ms;
+        if (mode === 'A') { ax = Math.max(AU - b, 0); ms = Math.max(MS0 - Math.max(b - AU, 0), 0); }
+        else { ms = Math.min(Math.max(AU + MS0 - b, 0), 560.4); ax = Math.max(AU + MS0 - b, 0) - ms; }
+        const [fx, fy] = fuelArm(ms);
+        const W = ZW + ax + TRAP + ms, MX = ZMX + (ax + TRAP) * a.auxX + ms * fx, MY = ZMY + ms * fy;
+        const X = MX / W, Y = MY / W;
+        traj[mode].push({ mode, fr, ms, ax, W, X, Y, mf: X - fwdLim(W), ma: aftLim(W) - X, ml: LIM.LAT - Math.abs(Y), mi: W - wMin(X) });
+      }
+    }
+    const all = traj.A.concat(traj.F);
+    const minBy = k => all.reduce((m, p) => (p[k] < m[k] ? p : m), all[0]);
+    const pF = minBy('mf'), pA = minBy('ma');
+    const MIN_MF = pF.mf, MIN_MA = pA.ma, MIN_ML = Math.min(...all.map(p => p.ml)), MIN_MI = Math.min(...all.map(p => p.mi));
+    const where = p => (p.fr === 0 ? 'na decolagem' : p.fr === 1 ? 'no pouso' : `em voo, com ${Math.round(p.ms)} kg no principal+supplies`);
+    const dep = traj.A[0], arrA = traj.A[100], arrF = traj.F[100];
+    const W_DEP = dep.W, W_ARR = arrA.W;
+    const near = p => Math.min(p.X - fwdLim(W_ARR), aftLim(W_ARR) - p.X);
+    const X_ARR = near(arrA) <= near(arrF) ? arrA.X : arrF.X;
+
+    const phase = pts => ({ mf: Math.min(...pts.map(p => p.mf)), ma: Math.min(...pts.map(p => p.ma)), ml: Math.min(...pts.map(p => p.ml)), mi: Math.min(...pts.map(p => p.mi)) });
+    const interior = all.filter(p => p.fr > 0 && p.fr < 1);
+    const ph = { D: phase([dep]), V: phase(interior), P: phase([arrA, arrF]) };
+    const vF = interior.reduce((m, p) => (p.mf < m.mf ? p : m), interior[0]);
+    const vA = interior.reduce((m, p) => (p.ma < m.ma ? p : m), interior[0]);
+    ph.D.out = ph.D.mf < 0 || ph.D.ma < 0 || ph.D.ml < 0 || ph.D.mi < 0 || W_DEP > LIM.PMD;
+    ph.V.out = ph.V.mf < 0 || ph.V.ma < 0 || ph.V.ml < 0 || ph.V.mi < 0;
+    ph.P.out = ph.P.mf < 0 || ph.P.ma < 0 || ph.P.ml < 0 || ph.P.mi < 0;
+    const ptext = (m, pmd, xf, xa) => {
+      if (!m.out) return `Dentro — margens: dianteira ${fmt1(m.mf)} mm, traseira ${fmt1(m.ma)} mm`;
+      let t = '';
+      if (pmd && W_DEP > LIM.PMD) t += `Peso ${fmt1(W_DEP - LIM.PMD)} kg acima do PMD. `;
+      if (m.mf < 0) t += `CG ${fmt1(-m.mf)} mm À FRENTE do limite${xf || ''}. `;
+      if (m.ma < 0) t += `CG ${fmt1(-m.ma)} mm ATRÁS do limite${xa || ''}. `;
+      if (m.ml < 0) t += `CG lateral ${fmt1(-m.ml)} mm além de ±${LIM.LAT} mm. `;
+      if (m.mi < 0) t += 'Abaixo da borda inferior. ';
+      return t.trim();
+    };
+    ph.D.text = ptext(ph.D, true);
+    ph.V.text = ptext(ph.V, false, ` (com ${Math.round(vF.ms)} kg no principal+supplies)`, ` (com ${Math.round(vA.ms)} kg no principal+supplies)`);
+    ph.P.text = ptext(ph.P, false);
+    const ENV_OUT = W_DEP > LIM.PMD || MIN_MF < 0 || MIN_MA < 0 || MIN_ML < 0 || MIN_MI < 0;
+
+    const errs = errors(s);
+    let V;
+    if (errs.length) V = 'ERRO'; else if (W_DEP > LIM.PMD) V = 'PMD'; else if (FUEL_ARR < 0) V = 'COMB';
+    else if (MIN_MF < 0) V = 'FRENTE'; else if (MIN_MA < 0) V = 'ATRAS'; else if (MIN_ML < 0) V = 'LATERAL'; else if (MIN_MI < 0) V = 'INFERIOR'; else V = 'OK';
+    const msg = {
+      ERRO: errs.length ? `NÃO CALCULADO — corrija: ${errs[0][1]}` : '',
+      PMD: `NÃO DECOLAR — peso ${fmt1(W_DEP)} kg excede o PMD em ${fmt1(W_DEP - LIM.PMD)} kg`,
+      COMB: `NÃO DECOLAR — combustível insuficiente para o EET (faltam ${fmt1(-FUEL_ARR)} kg)`,
+      FRENTE: `NÃO DECOLAR — CG À FRENTE do limite em ${fmt1(-MIN_MF)} mm, ${where(pF)}`,
+      ATRAS: `NÃO DECOLAR — CG ATRÁS do limite em ${fmt1(-MIN_MA)} mm, ${where(pA)}`,
+      LATERAL: `NÃO DECOLAR — CG lateral fora de ±${LIM.LAT} mm`,
+      INFERIOR: 'NÃO DECOLAR — abaixo da borda inferior do envelope',
+      OK: 'DENTRO DO ENVELOPE EM TODO O VOO',
+    }[V];
+
+    const eetT = N(s.eetT), eetV = N(s.eetV), ct = N(s.ct), cv = N(s.cv);
+    const RATE = eetT + eetV <= 0 ? ct : (ct * eetT + cv * eetV) / (eetT + eetV);
+    const base = AU + N(s.main) - N(s.acion) - N(s.taxi) - N(s.proc);
+    const hrs = f => (RATE > 0 ? Math.max(f, 0) / RATE : 0);
+    const aut = { total: hrs(base + N(s.sup)), local: hrs(base), seg: hrs(base - 50), eet: (eetT + eetV) / 60 };
+    const eetMin = eetT + eetV;
+    aut.msg = aut.seg * 60 >= eetMin ? `Autonomia de segurança atende ao EET, com folga de ${Math.round(aut.seg * 60 - eetMin)} min.`
+      : aut.local * 60 >= eetMin ? 'ATENÇÃO: a autonomia só permite voos locais (dentro da TMA).'
+      : aut.total * 60 >= eetMin ? 'MUITA ATENÇÃO: chegada com o principal zerado e só os supplies.' : 'Autonomia total insuficiente para o EET.';
+    const FUEL_AV = Math.max(0, AU + N(s.main) + N(s.sup) - N(s.acion) - N(s.taxi) - N(s.proc));
+    const EET_T_MAX = ct <= 0 ? 0 : Math.max(0, FUEL_AV - eetV / 60 * cv) / ct * 60;
+    const EET_V_MAX = cv <= 0 ? 0 : Math.max(0, FUEL_AV - eetT / 60 * ct) / cv * 60;
+
+    return {
+      items, ZW, ZMX, ZMY, AU, TRAP, MS0, BURN, FUEL_ARR, traj, W_DEP, W_ARR, X_DEP: dep.X, Y_DEP: dep.Y, X_ARR_A: arrA.X, X_ARR_F: arrF.X, X_ARR, Y_ARR: arrA.Y,
+      LFD: fwdLim(W_DEP), LAD: aftLim(W_DEP), LFA: fwdLim(W_ARR), LAA: aftLim(W_ARR),
+      MIN_MF, MIN_MA, MIN_ML, MIN_MI, WHERE_F: where(pF), WHERE_A: where(pA), ph, ENV_OUT, errs, V, msg, aut, EET_T_MAX, EET_V_MAX,
+      fuelDep: dep.ax + TRAP + dep.ms, fuelArr: Math.max(FUEL_ARR, 0) + TRAP, flirModel: a.flirModel, anvNote: a.note, eqMass: k => a[k][0],
+    };
+  }
+  function fmt1(v) { return (Math.round(v * 10) / 10).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }); }
+  return { ANV, SEAT_MODEL, SEATS, LOCS, ITEMS, EDITABLE_FROM, LIM, POLY, fwdLim, aftLim, defaults, compute, errors, fmt1, N, isNum };
+})();
+if (typeof module !== 'undefined') module.exports = PB;
+
+</script>
+<script>
+(() => {
+  const KEY = 'pb-ec135-ceoar-v5';
+  const $ = id => document.getElementById(id);
+  const f1 = v => (Math.round(v * 10) / 10).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  const f0 = v => Math.round(v).toLocaleString('pt-BR');
+  const hhmm = h => { const m = Math.max(0, Math.round(h * 60)); return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`; };
+  const parse = t => { if (t === null || t === undefined) return NaN; const s = String(t).trim().replace(/\s/g, '').replace(',', '.'); return s === '' ? 0 : Number(s); };
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const L = PB.LIM;
+
+  let S = load();
+  function load() {
+    try { const raw = localStorage.getItem(KEY); if (raw) { const o = JSON.parse(raw); if (o && o.seats && o.mats && o.cfg) return o; } } catch (e) {}
+    return PB.defaults();
+  }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+
+  let toastT;
+  function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 4200); }
+
+  /* campo numérico com regra de aceitação (equivale à validação de dados da planilha) */
+  function numField(id, get, set, rule, opts = {}) {
+    const el = document.createElement('input');
+    el.type = 'text'; el.inputMode = 'decimal'; el.id = id; el.className = 'n'; el.autocomplete = 'off';
+    el.value = fmtIn(get(), opts.dec);
+    el.addEventListener('focus', () => el.select());
+    el.addEventListener('change', () => {
+      const v = parse(el.value);
+      const why = Number.isFinite(v) ? rule(v) : 'Informe um número.';
+      if (why) { el.classList.remove('reject'); void el.offsetWidth; el.classList.add('reject'); toast(why); el.value = fmtIn(get(), opts.dec); return; }
+      el.classList.remove('reject'); set(v); el.value = fmtIn(v, opts.dec); update();
+    });
+    el.addEventListener('keydown', e => { if (e.key === 'Enter') el.blur(); });
+    return el;
+  }
+  function fmtIn(v, dec = 1) { return (Number(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: dec }); }
+  function sw(id, checked, onChange, label) {
+    const w = document.createElement('label'); w.className = 'sw';
+    w.innerHTML = `<input type="checkbox" id="${id}" ${checked ? 'checked' : ''} aria-label="${esc(label)}"><span></span><em>${checked ? 'Sim' : 'Não'}</em>`;
+    const inp = w.querySelector('input');
+    inp.addEventListener('change', () => { w.querySelector('em').textContent = inp.checked ? 'Sim' : 'Não'; onChange(inp.checked); });
+    return w;
+  }
+  function row(container, label, ...controls) {
+    const r = document.createElement('div'); r.className = 'row';
+    const l = document.createElement('div'); l.className = 'lbl'; l.innerHTML = label; r.appendChild(l);
+    const c1 = document.createElement('div'); const c2 = document.createElement('div');
+    controls.slice(0, -1).forEach(c => c1.appendChild(c)); if (controls.length) c2.appendChild(controls[controls.length - 1]);
+    c1.style.display = 'flex'; c1.style.gap = '8px'; c1.style.alignItems = 'center'; c2.style.display = 'flex'; c2.style.gap = '6px'; c2.style.alignItems = 'center';
+    r.appendChild(c1); r.appendChild(c2);
+    container.appendChild(r); return r;
+  }
+  const unit = u => { const s = document.createElement('span'); s.className = 'unit'; s.textContent = u; return s; };
+  const wrap = (...els) => { const d = document.createElement('div'); d.style.display = 'flex'; d.style.gap = '6px'; d.style.alignItems = 'center'; els.forEach(e => d.appendChild(e)); return d; };
+  function addMsg(r, cls, id) { const d = document.createElement('div'); d.className = cls; d.id = id; r.appendChild(d); return d; }
+
+  function build() {
+    // aeronave
+    document.querySelectorAll('.seg button').forEach(b => b.onclick = () => { S.anv = b.dataset.anv; update(); build(); });
+    // posições
+    const pr = $('posRows'); pr.innerHTML = '';
+    [['pcd', 'Piloto — cadeira direita (PCD)'], ['pce', 'Piloto — cadeira esquerda (PCE)']].forEach(([k, nm]) => {
+      const r = row(pr, `${nm}<small>mínimo ${L.PESO_MIN} kg</small>`, document.createElement('span'),
+        wrap(numField('in-' + k, () => S[k], v => S[k] = v, v => v < L.PESO_MIN ? `Peso do piloto: mínimo de ${L.PESO_MIN} kg (com vestuário e capacete).` : ''), unit('kg')));
+      addMsg(r, 'err', 'e-' + k);
+    });
+    PB.SEATS.forEach((seat, i) => {
+      const st = S.seats[i];
+      const nf = numField('in-seat' + i, () => S.seats[i].w, v => S.seats[i].w = v,
+        v => v < 0 ? 'O peso não pode ser negativo.' : (v > 0 && S.seats[i].inst !== 'S' ? 'Só é possível informar peso num banco instalado. Carga solta vai em Materiais.' : ''));
+      nf.disabled = st.inst !== 'S';
+      const s = sw('sw-seat' + i, st.inst === 'S', on => { S.seats[i].inst = on ? 'S' : 'N'; if (!on) S.seats[i].w = 0; nf.disabled = !on; nf.value = fmtIn(S.seats[i].w); update(); }, 'Banco instalado: ' + seat.name);
+      const r = row(pr, `${seat.name}<small>banco instalado</small>`, s, wrap(nf, unit('kg')));
+      addMsg(r, 'err', 'e-seat' + i);
+    });
+    // equipamentos
+    const er = $('eqRows'); er.innerHTML = '';
+    [['estante', 'Estante do FLIR'], ['flir', 'FLIR (torre)'], ['sx16', 'Farol SX-16 + suporte'], ['floats', 'Flutuadores'], ['auxtk', 'Tanque auxiliar']].forEach(([k, nm]) => {
+      const lbl = k === 'flir' ? `${nm}<small id="flirModel"></small>` : nm;
+      const r = row(er, lbl, document.createElement('span'), wrap(sw('sw-' + k, S.equip[k] === 'S', on => {
+        S.equip[k] = on ? 'S' : 'N';
+        if (k === 'auxtk' && !on) { S.aux = 0; }
+        update(); if (k === 'auxtk') build();
+      }, nm), unit('')));
+      const m = document.createElement('span'); m.className = 'unit num'; m.id = 'eqm-' + k; r.children[1].appendChild(m);
+    });
+    // combustível
+    const fr = $('fuelRows'); fr.innerHTML = '';
+    const fuelDef = [
+      ['main', `Tanque principal<small>útil, máximo ${f1(L.MAX_MAIN)} kg</small>`, v => v < 0 || v > L.MAX_MAIN + 1e-9 ? `Tanque principal: 0 a ${f1(L.MAX_MAIN)} kg (útil).` : ''],
+      ['sup', `Supplies<small>útil, máximo ${f1(L.MAX_SUP)} kg</small>`, v => v < 0 || v > L.MAX_SUP + 1e-9 ? `Supplies: 0 a ${f1(L.MAX_SUP)} kg (útil).` : ''],
+      ['aux', `Tanque auxiliar<small>0, ou de ${L.AUX_MIN} a ${f1(L.MAX_AUX)} kg — exige o tanque instalado</small>`,
+        v => (v !== 0 && S.equip.auxtk !== 'S') ? 'Só é possível informar combustível no auxiliar com o tanque auxiliar instalado.' :
+             (v !== 0 && (v < L.AUX_MIN || v > L.MAX_AUX + 1e-9)) ? `Auxiliar: 0 kg, ou de ${L.AUX_MIN} a ${f1(L.MAX_AUX)} kg. Abaixo de ${L.AUX_MIN} kg a transferência não se inicia.` : (v < 0 ? 'Valor negativo.' : '')],
+    ];
+    fuelDef.forEach(([k, lbl, rule]) => {
+      const nf = numField('in-' + k, () => S[k], v => S[k] = v, rule);
+      if (k === 'aux') nf.disabled = S.equip.auxtk !== 'S';
+      const lit = document.createElement('span'); lit.className = 'unit num'; lit.id = 'lit-' + k;
+      const r = row(fr, lbl, lit, wrap(nf, unit('kg')));
+      addMsg(r, 'err', 'e-' + k);
+    });
+    // consumo
+    const cr = $('consRows'); cr.innerHTML = '';
+    [['acion', 'Consumo no acionamento', 'kg'], ['taxi', 'Consumo no táxi', 'kg'], ['proc', 'Consumo em subida/descida', 'kg']].forEach(([k, nm, u]) => {
+      row(cr, nm, document.createElement('span'), wrap(numField('in-' + k, () => S[k], v => S[k] = v, v => v < 0 ? 'Informe um número maior ou igual a zero.' : ''), unit(u)));
+    });
+    [['eetT', 'ct', 'EET de voo translacional', 'EET_T_MAX', 'translado', 'vigilância'], ['eetV', 'cv', 'EET de voo de vigilância', 'EET_V_MAX', 'vigilância', 'translado']].forEach(([k, kc, nm, mx, fase, outra]) => {
+      const nf = numField('in-' + k, () => S[k], v => S[k] = v, v => {
+        if (v < 0) return 'Informe um tempo maior ou igual a zero.';
+        const r = PB.compute(S); if (v > r[mx] + 1e-4) return `O tempo de ${fase} ultrapassa a autonomia real (máximo ${Math.floor(r[mx])} min, considerando o tempo de ${outra} lançado).`;
+        return '';
+      }, { dec: 0 });
+      const cons = numField('in-' + kc, () => S[kc], v => S[kc] = v, v => v < 0 ? 'Informe um consumo maior ou igual a zero.' : '', { dec: 0 });
+      cons.style.width = '76px';
+      const r = row(cr, `${nm}<small>em minutos; consumo em kg/h ao lado</small>`, wrap(cons, unit('kg/h')), wrap(nf, unit('min')));
+      addMsg(r, 'hint', 'h-' + k); addMsg(r, 'err', 'e-' + k);
+    });
+    // materiais
+    const mr = $('matRows'); mr.innerHTML = '';
+    S.mats.forEach((m, i) => {
+      const d = document.createElement('div'); d.className = 'mat';
+      const editable = i >= PB.EDITABLE_FROM;
+      if (editable) {
+        const nm = document.createElement('input'); nm.type = 'text'; nm.className = 'name'; nm.id = 'mn-' + i; nm.value = m.name; nm.setAttribute('aria-label', 'Nome do item');
+        nm.addEventListener('change', () => { S.mats[i].name = nm.value || `Item ${i + 1}`; update(); });
+        d.appendChild(nm);
+        const kg = numField('mk-' + i, () => S.mats[i].kg, v => S.mats[i].kg = v, v => v < 0 ? 'Informe uma massa maior ou igual a zero.' : '');
+        kg.className = 'n kgi'; kg.setAttribute('aria-label', 'kg por unidade'); const kw = document.createElement('div'); kw.className = 'kgw'; kw.appendChild(kg); d.appendChild(kw);
+      } else {
+        const nm = document.createElement('div'); nm.textContent = m.name; d.appendChild(nm);
+        const kg = document.createElement('div'); kg.className = 'kg num'; kg.textContent = f1(m.kg) + ' kg'; d.appendChild(kg);
+      }
+      const stp = document.createElement('div'); stp.className = 'step';
+      stp.innerHTML = `<button type="button" aria-label="Diminuir ${esc(m.name)}">−</button><output id="mq-${i}">${m.qty}</output><button type="button" aria-label="Aumentar ${esc(m.name)}">+</button>`;
+      const [bm, , bp] = stp.children;
+      bm.onclick = () => { if (S.mats[i].qty > 0) { S.mats[i].qty--; stp.querySelector('output').textContent = S.mats[i].qty; update(); } };
+      bp.onclick = () => { S.mats[i].qty++; if (!S.mats[i].loc) { S.mats[i].loc = 'Meio'; d.querySelector('select').value = 'Meio'; toast(`${S.mats[i].name}: local "Meio" atribuído; ajuste se necessário.`); } stp.querySelector('output').textContent = S.mats[i].qty; update(); };
+      d.appendChild(stp);
+      const sel = document.createElement('select'); sel.id = 'ml-' + i; sel.setAttribute('aria-label', 'Local de ' + m.name);
+      sel.innerHTML = '<option value="">— local —</option>' + PB.LOCS.map(l => `<option ${m.loc === l ? 'selected' : ''}>${l}</option>`).join('');
+      sel.onchange = () => { S.mats[i].loc = sel.value; update(); };
+      d.appendChild(sel);
+      const e = document.createElement('div'); e.className = 'err'; e.id = 'me-' + i; d.appendChild(e);
+      mr.appendChild(d);
+    });
+    // configuração técnica
+    const cf = $('cfgRows'); cf.innerHTML = ''; const c = S.cfg;
+    const selRow = (id, label, options, get, set) => {
+      const s = document.createElement('select'); s.id = id; s.innerHTML = options.map(o => `<option ${get() === o ? 'selected' : ''}>${o}</option>`).join('');
+      s.onchange = () => { set(s.value); update(); build(); };
+      row(cf, label, document.createElement('span'), s);
+    };
+    selRow('cfg-assento', 'Modelo do assento dos pilotos<small>FLM Fig. 6-6 (H110 = 2.428 mm)</small>', Object.keys(PB.SEAT_MODEL), () => c.assento, v => c.assento = v);
+    row(cf, 'Provisões fixas do FLIR fora da pesagem', document.createElement('span'), sw('cfg-prov', c.prov === 'S', on => { c.prov = on ? 'S' : 'N'; update(); }, 'Provisões fixas do FLIR fora da pesagem'));
+    row(cf, 'Massa de cada banco de passageiro', document.createElement('span'), wrap(numField('cfg-seatw', () => c.seatW, v => c.seatW = v, v => v < 0 ? 'Valor negativo.' : ''), unit('kg')));
+    row(cf, 'Densidade para conversão em litros', document.createElement('span'), wrap(numField('cfg-dens', () => c.dens, v => c.dens = v, v => v <= 0 ? 'A densidade deve ser maior que zero.' : '', { dec: 3 }), unit('kg/l')));
+    const opw = numField('cfg-opw', () => c.op.w, v => c.op.w = v, v => v < 0 ? 'Valor negativo.' : (v > 0 && c.op.inst !== 'S' ? 'Só é possível informar peso no assento de operador instalado.' : ''));
+    opw.disabled = c.op.inst !== 'S';
+    row(cf, 'Assento de operador do FLIR<small>FLM Fig. 6-13 a 6-15</small>', sw('cfg-opi', c.op.inst === 'S', on => { c.op.inst = on ? 'S' : 'N'; if (!on) c.op.w = 0; update(); build(); }, 'Assento de operador instalado'), wrap(opw, unit('kg')));
+    if (c.op.inst === 'S') {
+      selRow('cfg-lado', 'Lado do assento de operador', ['LH', 'RH'], () => c.op.lado, v => c.op.lado = v);
+      row(cf, 'Furo do trilho (19 a 41)', document.createElement('span'), numField('cfg-furo', () => c.op.furo, v => c.op.furo = v, v => (Number.isInteger(v) && v >= 19 && v <= 41) ? '' : 'Furo: número inteiro de 19 a 41.', { dec: 0 }));
+      row(cf, 'Massa do assento de operador<small>provisória — confirmar</small>', document.createElement('span'), wrap(numField('cfg-opsw', () => c.op.seatW, v => c.op.seatW = v, v => v < 0 ? 'Valor negativo.' : ''), unit('kg')));
+    }
+    update();
+  }
+
+  function setPill(td, ok, okText = 'OK', badText = 'FORA') { td.innerHTML = `<span class="pill ${ok ? '' : 'bad'}">${ok ? okText : badText}</span>`; }
+
+  function update() {
+    const r = PB.compute(S);
+    save();
+    document.querySelectorAll('.seg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.anv === S.anv)));
+    $('anvNote').textContent = `${S.anv} — ${r.anvNote}`;
+    // veredito
+    const v = $('verdict'); v.classList.toggle('bad', r.V !== 'OK'); $('vmsg').textContent = r.msg;
+    $('cW').textContent = f1(r.W_DEP); $('cD').textContent = f1(L.PMD - r.W_DEP); $('cX').textContent = f1(r.X_DEP); $('cF').textContent = f1(r.FUEL_ARR);
+    // erros nos campos
+    document.querySelectorAll('.err').forEach(e => e.textContent = '');
+    const pos = { 'Piloto — cadeira direita (PCD)': 'e-pcd', 'Piloto — cadeira esquerda (PCE)': 'e-pce', 'Tanque principal': 'e-main', 'Supplies': 'e-sup', 'Tanque auxiliar': 'e-aux' };
+    PB.SEATS.forEach((s, i) => pos[s.name] = 'e-seat' + i);
+    r.errs.forEach(([where, msg]) => {
+      if (pos[where] && $(pos[where])) $(pos[where]).textContent = msg;
+      const mi = S.mats.findIndex(m => m.name === where); if (mi >= 0 && $('me-' + mi)) $('me-' + mi).textContent = msg;
+    });
+    // totais
+    $('posTotal').textContent = f1(PB.N(S.pcd) + PB.N(S.pce) + S.seats.reduce((t, s) => t + PB.N(s.w), 0) + (S.cfg.op.inst === 'S' ? PB.N(S.cfg.op.w) : 0)) + ' kg';
+    ['estante', 'flir', 'sx16', 'floats', 'auxtk'].forEach(k => { const el = $('eqm-' + k); if (el) el.textContent = S.equip[k] === 'S' ? f1(r.eqMass(k)) + ' kg' : '—'; });
+    if ($('flirModel')) $('flirModel').textContent = r.flirModel;
+    ['main', 'sup', 'aux'].forEach(k => { const el = $('lit-' + k); if (el) el.textContent = f0(PB.N(S[k]) / (S.cfg.dens || 0.8)) + ' l'; });
+    $('fuelTotal').textContent = `PCP ${f1(PB.N(S.main) + PB.N(S.sup))} + Aux ${f1(PB.N(S.aux))} = ${f1(PB.N(S.main) + PB.N(S.sup) + PB.N(S.aux))} kg`;
+    $('matTotal').textContent = f1(S.mats.reduce((t, m) => t + (PB.isNum(m.kg) && PB.isNum(m.qty) ? m.kg * m.qty : 0), 0)) + ' kg';
+    // EET restante
+    const eh = [['eetT', 'EET_T_MAX'], ['eetV', 'EET_V_MAX']];
+    eh.forEach(([k, mx]) => {
+      const m = Math.floor(r[mx]); $('h-' + k).textContent = `Cabem até ${m} min (${Math.floor(m / 60)}h${String(m % 60).padStart(2, '0')}) pela autonomia real, descontada a outra fase.`;
+      $('e-' + k).textContent = PB.N(S[k]) > r[mx] + 1e-3 ? `Acima da autonomia: máximo ${m} min com o combustível atual.` : '';
+    });
+    // verificações
+    const ck = [
+      ['Preenchimento', r.errs.length === 0, r.errs.length === 0 ? 'Sem erros' : `${r.errs.length} erro(s) — veja os campos em vermelho`, 'ERRO'],
+      ['Peso máximo de decolagem (2.910 kg)', r.W_DEP <= L.PMD, r.W_DEP <= L.PMD ? `Sobram ${f1(L.PMD - r.W_DEP)} kg` : `Excesso de ${f1(r.W_DEP - L.PMD)} kg`],
+      ['Combustível para o EET', r.FUEL_ARR >= 0, r.FUEL_ARR >= 0 ? `Pouso com ${f1(r.FUEL_ARR)} kg utilizáveis` : `Faltam ${f1(-r.FUEL_ARR)} kg`],
+      ['CG — limite dianteiro (todo o voo)', r.MIN_MF >= 0, `Menor margem ${f1(r.MIN_MF)} mm, ${r.WHERE_F}`],
+      ['CG — limite traseiro (todo o voo)', r.MIN_MA >= 0, `Menor margem ${f1(r.MIN_MA)} mm, ${r.WHERE_A}`],
+      ['CG lateral (±100 mm)', r.MIN_ML >= 0, `Menor margem ${f1(r.MIN_ML)} mm`],
+    ];
+    $('checks').innerHTML = ck.map(([t, ok, d, bad]) => `<tr><td>${t}</td><td><span class="pill ${ok ? '' : 'bad'}">${ok ? 'OK' : (bad || 'FORA')}</span></td><td class="cond ${ok ? '' : 'bad'}">${esc(d)}</td></tr>`).join('');
+    // fases
+    const b = $('envBanner'); b.classList.toggle('bad', r.ENV_OUT);
+    b.textContent = r.ENV_OUT ? 'ENVELOPE EM VERMELHO: CONFIGURAÇÃO FORA DOS LIMITES' : 'Configuração dentro dos limites em todas as fases';
+    $('phases').innerHTML = [['Decolagem', r.ph.D], ['Em voo (pior ponto)', r.ph.V], ['Pouso', r.ph.P]]
+      .map(([t, p]) => `<tr><td>${t}</td><td><span class="pill ${p.out ? 'bad' : ''}">${p.out ? 'FORA' : 'OK'}</span></td><td class="cond ${p.out ? 'bad' : ''}">${esc(p.text)}</td></tr>`).join('');
+    // números
+    const nums = [['Peso (kg)', r.W_DEP, r.W_ARR], ['CG longitudinal (mm)', r.X_DEP, r.X_ARR], ['Limite dianteiro (mm)', r.LFD, r.LFA], ['Limite traseiro (mm)', r.LAD, r.LAA],
+      ['CG lateral (mm, + = direita)', r.Y_DEP, r.Y_ARR], ['Combustível a bordo (kg)', r.fuelDep, r.fuelArr]];
+    $('nums').innerHTML = nums.map(([t, a, c]) => `<tr><td>${t}</td><td class="v">${f1(a)}</td><td class="v">${f1(c)}</td></tr>`).join('') +
+      `<tr><td><b>Disponibilidade até o PMD (kg)</b></td><td class="v">${f1(L.PMD - r.W_DEP)}</td><td></td></tr>`;
+    // autonomia
+    $('aut').innerHTML = [['Total (auxiliar + principal + supplies)', r.aut.total], ['Voos locais (supplies cheios)', r.aut.local], ['Voos de segurança (50 kg + supplies)', r.aut.seg], ['EET total', r.aut.eet]]
+      .map(([t, h]) => `<tr><td>${t}</td><td class="v">${hhmm(h)}</td></tr>`).join('');
+    $('autMsg').textContent = r.aut.msg;
+    // alertas
+    const al = r.errs.map(([w, m]) => `${w}: ${m}`);
+    eh.forEach(([k, mx]) => { if (PB.N(S[k]) > r[mx] + 1e-3) al.push(`${k === 'eetT' ? 'EET de translado' : 'EET de vigilância'} acima da autonomia (máximo ${Math.floor(r[mx])} min)`); });
+    if (r.FUEL_ARR < 0) al.push(`Combustível insuficiente para o EET: faltam ${f1(-r.FUEL_ARR)} kg`);
+    const ul = $('alerts'); ul.classList.toggle('none', al.length === 0);
+    ul.innerHTML = al.length ? al.map(a => `<li>${esc(a)}</li>`).join('') : '<li>Nenhum alerta.</li>';
+    drawChart(r);
+  }
+
+  function drawChart(r) {
+    const W = 560, H = 400, m = { l: 52, r: 14, t: 14, b: 40 };
+    const x0 = Math.min(4100, Math.floor(Math.min(...r.traj.A.concat(r.traj.F).map(p => p.X)) / 50) * 50 - 50), x1 = Math.max(4600, Math.ceil(Math.max(...r.traj.A.concat(r.traj.F).map(p => p.X)) / 50) * 50 + 50);
+    const y0 = 1500, y1 = Math.max(3000, Math.ceil((r.W_DEP + 40) / 100) * 100);
+    const sx = x => m.l + (x - x0) / (x1 - x0) * (W - m.l - m.r), sy = y => H - m.b - (y - y0) / (y1 - y0) * (H - m.t - m.b);
+    const css = getComputedStyle(document.documentElement);
+    const col = n => css.getPropertyValue(n).trim();
+    let g = '';
+    for (let x = x0; x <= x1; x += 50) g += `<line class="grid" x1="${sx(x)}" x2="${sx(x)}" y1="${sy(y0)}" y2="${sy(y1)}"/>` + (x % 100 === 0 ? `<text x="${sx(x)}" y="${H - m.b + 16}" text-anchor="middle">${x.toLocaleString('pt-BR')}</text>` : '');
+    for (let y = y0; y <= y1; y += 100) g += `<line class="grid" x1="${sx(x0)}" x2="${sx(x1)}" y1="${sy(y)}" y2="${sy(y)}"/>` + (y % 250 === 0 ? `<text x="${m.l - 6}" y="${sy(y) + 4}" text-anchor="end">${y.toLocaleString('pt-BR')}</text>` : '');
+    g += `<text x="${(W + m.l) / 2}" y="${H - 6}" text-anchor="middle">CG longitudinal (mm)</text><text transform="translate(12 ${(H - m.b) / 2}) rotate(-90)" text-anchor="middle">Peso (kg)</text>`;
+    const envCol = r.ENV_OUT ? col('--bad') : col('--accent');
+    const poly = PB.POLY.map(([x, y]) => `${sx(x)},${sy(y)}`).join(' ');
+    g += `<polygon points="${poly}" fill="${envCol}" fill-opacity="${r.ENV_OUT ? 0.10 : 0.06}" stroke="${envCol}" stroke-width="${r.ENV_OUT ? 4 : 2.5}" stroke-linejoin="round"/>`;
+    const path = pts => pts.map(p => `${sx(p.X).toFixed(1)},${sy(p.W).toFixed(1)}`).join(' ');
+    g += `<polyline points="${path(r.traj.A)}" fill="none" stroke="${col('--traj-a')}" stroke-width="3.5" stroke-linecap="round"/>`;
+    g += `<polyline points="${path(r.traj.F)}" fill="none" stroke="${col('--traj-f')}" stroke-width="2" stroke-dasharray="6 4"/>`;
+    const dx = sx(r.X_DEP), dy = sy(r.W_DEP), ax = sx(r.X_ARR), ay = sy(r.W_ARR);
+    g += `<circle cx="${dx}" cy="${dy}" r="7" fill="${col('--accent')}" stroke="${col('--surface')}" stroke-width="2"><title>Decolagem: ${f1(r.W_DEP)} kg, ${f1(r.X_DEP)} mm</title></circle>`;
+    g += `<polygon points="${ax},${ay - 8} ${ax - 7},${ay + 6} ${ax + 7},${ay + 6}" fill="${col('--bad')}" stroke="${col('--surface')}" stroke-width="1.5"><title>Pouso: ${f1(r.W_ARR)} kg, ${f1(r.X_ARR)} mm</title></polygon>`;
+    $('chart').innerHTML = g;
+    $('lgEnv').style.borderColor = envCol;
+  }
+
+  $('resetBtn').onclick = () => $('modal').classList.add('show');
+  $('mNo').onclick = () => $('modal').classList.remove('show');
+  $('mYes').onclick = () => { S = PB.defaults(); $('modal').classList.remove('show'); build(); toast('Valores padrão restaurados.'); };
+  build();
+})();
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').then(reg => {
+    const tag = document.getElementById('offTag'); if (tag) tag.textContent = 'Disponível offline';
+  }).catch(() => {}));
+}
+</script>
+</body>
+</html>
