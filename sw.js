@@ -1,5 +1,5 @@
 /* Service worker: guarda o app no aparelho para uso sem internet */
-const CACHE = 'pb-ec135-v1.3-2026-11-07';
+const CACHE = 'pb-ec135-v1.5-2026-11-07';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
