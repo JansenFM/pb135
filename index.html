@@ -87,6 +87,9 @@ main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; padding-
 .row .lbl small { display: block; color: var(--muted); font-size: .78rem; }
 .row .err { grid-column: 1 / -1; color: var(--bad); font-weight: 600; font-size: .85rem; }
 .row .hint { grid-column: 1 / -1; color: var(--accent); font-weight: 600; font-size: .85rem; }
+.row .hint.bad { color: var(--bad); font-weight: 700; }
+tr.pcp td { background: var(--ok-bg); }
+tr.pcp.bad td { background: var(--bad-bg); color: var(--bad); }
 input[type="text"], select { font: 500 1.05rem var(--font-body); min-height: 44px; border-radius: 8px; border: 1.5px solid var(--input-line); background: var(--input); color: var(--ink); padding: 6px 10px; }
 input.n { width: 104px; text-align: right; }
 input.name { width: 100%; }
@@ -256,6 +259,7 @@ footer { color: var(--muted); font-size: .78rem; padding: 0 0 24px; max-width: 8
     <section class="card">
       <h2>Peso e combustível</h2>
       <table class="t"><thead><tr><th></th><th style="text-align:right">Decolagem</th><th style="text-align:right">Pouso</th></tr></thead><tbody id="nums"></tbody></table>
+      <p class="note" id="pcpNote">Decolagem: após o acionamento. Tanque principal com os supplies cheios e o auxiliar (70 kg ou mais) transferido. <b>PCP para decolar no PMD</b>: leitura do tanque principal, com o motor ligado, em que a aeronave fica exatamente no PMD. Se o PCP estiver acima, aguarde consumindo até chegar a esse valor.</p>
     </section>
 
     <section class="card">
@@ -270,7 +274,7 @@ footer { color: var(--muted); font-size: .78rem; padding: 0 0 24px; max-width: 8
 <footer>
   Cálculo conforme o FLM EC 135 T2+ (Seção 6) e a ficha de pesagem da aeronave, validado contra a planilha Ceoar (v7) e em mais de 1 milhão de simulações de consistência.
   Ferramenta de apoio ao planejamento: a responsabilidade pelo peso e balanceamento é do piloto em comando.
-  Os dados ficam salvos só neste aparelho. Versão 1.5 (07/11/2026).
+  Os dados ficam salvos só neste aparelho. Versão 1.7 (08/11/2026).
 </footer>
 
 <div class="toast" id="toast" role="alert"></div>
@@ -683,7 +687,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 
 </script>
 <script>
-/* Motor de cálculo — Peso e Balanceamento EC 135 T2+ — v1.5 (07/11/2026)
+/* Motor de cálculo — Peso e Balanceamento EC 135 T2+ — v1.7 (08/11/2026)
    Regra de consistência: todo limite é comparado com o valor arredondado na mesma precisão em que é exibido
    (peso 0,01 kg; combustível 0,1 kg). Assim o veredito nunca contradiz o número mostrado. */
 const PB = (() => {
@@ -936,7 +940,24 @@ const PB = (() => {
     }
     const CG_OUT = MIN_MF < 0 || MIN_MA < 0 || MIN_ML < 0 || MIN_MI < 0;
     const warns = warnings(s, { EET_T_MAX, EET_V_MAX, FUEL_ARR_C });
+    // tanque principal: supplies considerados cheios enquanto houver combustível no principal; auxiliar (≥ 70 kg) transferido
+    const PCP_DEP = rnd(Math.max(MS0 - N(s.sup), 0), 1), PCP_ARR = Math.max(rnd(FUEL_ARR_C - N(s.sup), 1), 0);
+    // máximo no principal para ficar no PMD (mesma conta da planilha: ARREDONDAR.PARA.BAIXO com 1 casa)
+    const trunc1 = x => Math.trunc(Number((x * 10).toPrecision(15))) / 10 + 0;
+    const PMD_ROOM = LIM.PMD - (W_DEP - MS0);                       // quanto cabe de principal + supplies − acionamento
+    const MAIN_MAX = trunc1(PMD_ROOM - N(s.sup) + N(s.acion) + 1e-9);
+    // leitura do PCP (motor ligado, supplies cheios) em que a aeronave fica no PMD
+    const PCP_PMD_RAW = PMD_ROOM - N(s.sup);
+    const PCP_PMD = PCP_PMD_RAW < 0 ? null : trunc1(PCP_PMD_RAW + 1e-9);
+    const pcpPMDtxt = PCP_PMD === null ? 'impossível' : PCP_PMD >= LIM.MAX_MAIN ? 'tanque cheio cabe' : fmtF(PCP_PMD);
+    let mainHint;
+    if (PMD_OUT) {
+      if (PMD_ROOM < 0) mainHint = `Peso acima do PMD mesmo com principal e supplies vazios: retire ${fmtW(-PMD_ROOM)} kg de carga.`;
+      else if (MAIN_MAX < 0) mainHint = 'Peso acima do PMD mesmo com o principal vazio: reduza os supplies ou retire carga.';
+      else mainHint = `Para voltar ao PMD: no máximo ${fmtF(MAIN_MAX)} kg no tanque principal (hoje ${fmtF(N(s.main))} kg).` + (PCP_PMD !== null ? ` Com o motor já ligado: decole quando o PCP marcar até ${fmtF(PCP_PMD)} kg.` : '');
+    } else mainHint = MAIN_MAX >= LIM.MAX_MAIN ? `Principal cheio (${fmtF(LIM.MAX_MAIN)} kg) fica dentro do PMD.` : `Máximo no principal sem passar do PMD: ${fmtF(MAIN_MAX)} kg.`;
     const ui = {
+      mainHint,
       banner,
       chips: { dep: fmtW(W_DEP_C), disp: fmtW(LIM.PMD - W_DEP_C), pouso: fmtF(FUEL_ARR_C) },
       checks: [
@@ -947,14 +968,14 @@ const PB = (() => {
       ],
       phases: [['Decolagem', ph.D], ['Em voo', ph.V], ['Pouso', ph.P]].map(([t, p], i) => [t, p.out ? 'FORA' : 'OK', phSum(p, 'DVP'[i])]),
       envBanner: ENV_OUT ? 'ENVELOPE EM VERMELHO: CONFIGURAÇÃO FORA DOS LIMITES' : 'Configuração dentro dos limites em todas as fases',
-      nums: [['Peso (kg)', fmtW(W_DEP_C), fmtW(rnd(W_ARR, 2))], ['Combustível a bordo (kg)', fmtF(dep.ax + TRAP + dep.ms), fmtF(Math.max(FUEL_ARR_C, 0) + TRAP)]],
+      nums: [['Peso (kg)', fmtW(W_DEP_C), fmtW(rnd(W_ARR, 2))], ['Combustível a bordo (kg)', fmtF(dep.ax + TRAP + dep.ms), fmtF(Math.max(FUEL_ARR_C, 0) + TRAP)], ['Tanque principal (kg)', fmtF(PCP_DEP), fmtF(PCP_ARR)], ['PCP para decolar no PMD (kg)', pcpPMDtxt, '']],
       dispPMD: fmtW(LIM.PMD - W_DEP_C),
       alerts: errs.map(([w, m]) => ({ kind: 'erro', where: w, text: m })).concat(envAlerts, warns),
       autMsg: aut.msg,
     };
 
     return {
-      ui, W_DEP_C, FUEL_ARR_C, PMD_OUT, COMB_OUT, CG_OUT,
+      ui, W_DEP_C, FUEL_ARR_C, PMD_OUT, COMB_OUT, CG_OUT, PCP_DEP, PCP_ARR, PMD_ROOM, MAIN_MAX, PCP_PMD,
       items, ZW, ZMX, ZMY, AU, TRAP, MS0, BURN, FUEL_ARR, traj, W_DEP, W_ARR, X_DEP: dep.X, Y_DEP: dep.Y, X_ARR_A: arrA.X, X_ARR_F: arrF.X, X_ARR, Y_ARR: arrA.Y,
       LFD: fwdLim(W_DEP), LAD: aftLim(W_DEP), LFA: fwdLim(W_ARR), LAA: aftLim(W_ARR),
       MIN_MF, MIN_MA, MIN_ML, MIN_MI, WHERE_F: where(pF), WHERE_A: where(pA), pF, pA, ph, ENV_OUT, errs, V, msg, aut, EET_T_MAX, EET_V_MAX,
@@ -1091,7 +1112,8 @@ const PBPDF = (() => {
     table('Envelope por fase', ['Fase', 'Situação', 'Condição'], U.phases, [20, 16, COLW - 36], { align: ['left', 'left', 'left'],
       style: rw => ({ cells: { 1: { bold: true, color: rw[1] === 'OK' ? C.ok : C.bad }, 2: rw[1] === 'OK' ? null : { bold: true, color: C.bad } } }) });
     table('Peso e combustível', ['', 'Decolagem', 'Pouso'], U.nums.concat([['Disponibilidade até o PMD (kg)', U.dispPMD, '']]), [COLW - 52, 26, 26], { align: ['left', 'right', 'right'],
-      style: (rw, i) => (i === 2 ? { bold: true, cells: { 1: { bold: true } } } : null) });
+      style: rw => (rw[0].startsWith('Disponibilidade') ? { bold: true, cells: { 1: { bold: true } } } : rw[0].startsWith('PCP para') ? { bg: r.PMD_OUT ? C.badBg : C.okBg, bold: true, color: r.PMD_OUT ? C.bad : C.ink, cells: { 1: { bold: true, color: r.PMD_OUT ? C.bad : C.ink } } } : null) });
+    note('Decolagem: após o acionamento. Tanque principal: supplies cheios; auxiliar (70 kg ou mais) transferido. PCP para decolar no PMD: leitura do principal, com o motor ligado, em que a aeronave fica no PMD.');
     table('Autonomia', ['', 'hh:mm'], [['Total (auxiliar + principal + supplies)', hhmm(r.aut.total)], ['Voos locais (supplies cheios)', hhmm(r.aut.local)], ['Voos de segurança (50 kg + supplies)', hhmm(r.aut.seg)], ['EET total', hhmm(r.aut.eet)]], W2, { align: ['left', 'right'] });
     note(U.autMsg, C.accent, true);
 
@@ -1130,6 +1152,7 @@ const PBPDF = (() => {
     const fuel = [['Tanque principal', fmt(S.main, 1), fmt(PB.N(S.main) / dens, 0)], ['Supplies', fmt(S.sup, 1), fmt(PB.N(S.sup) / dens, 0)], ['Tanque auxiliar', fmt(S.aux, 1), fmt(PB.N(S.aux) / dens, 0)],
       ['Total a bordo', fmt(PB.N(S.main) + PB.N(S.sup) + PB.N(S.aux), 1), fmt((PB.N(S.main) + PB.N(S.sup) + PB.N(S.aux)) / dens, 0)]];
     table('Combustível', ['Tanque', 'kg', 'litros'], fuel, W3, { align: ['left', 'right', 'right'], style: (rw, i) => (i === 3 ? { bold: true, cells: { 1: { bold: true } } } : (i === 2 && PB.N(S.aux) > 0 && PB.N(S.aux) < L.AUX_MIN ? { color: C.bad, bold: true } : null)) });
+    note(U.mainHint, r.PMD_OUT ? C.bad : C.accent, true);
     const cons = [['Acionamento', `${fmt(S.acion, 0)} kg`, ''], ['Táxi', `${fmt(S.taxi, 0)} kg`, ''], ['Subida/descida', `${fmt(S.proc, 0)} kg`, ''],
       ['EET de translado', `${fmt(S.eetT, 0)} min`, `${fmt(S.ct, 0)} kg/h`], ['EET de vigilância', `${fmt(S.eetV, 0)} min`, `${fmt(S.cv, 0)} kg/h`]];
     table('Consumo e tempo de voo', ['Item', 'Valor', 'Consumo'], cons, W3, { align: ['left', 'right', 'right'] });
@@ -1162,7 +1185,7 @@ const PBPDF = (() => {
 </script>
 <script>
 (() => {
-  const KEY = 'pb-ec135-ceoar-v7', KEY_OLD = 'pb-ec135-ceoar-v6', APP_VER = '1.5';
+  const KEY = 'pb-ec135-ceoar-v7', KEY_OLD = 'pb-ec135-ceoar-v6', APP_VER = '1.7';
   const $ = id => document.getElementById(id);
   const f1 = v => (Math.round(v * 10) / 10).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   const f0 = v => Math.round(v).toLocaleString('pt-BR');
@@ -1280,6 +1303,7 @@ const PBPDF = (() => {
       if (k === 'aux') nf.disabled = S.equip.auxtk !== 'S';
       const lit = document.createElement('span'); lit.className = 'unit num'; lit.id = 'lit-' + k;
       const r = row(fr, lbl, lit, wrap(nf, unit('kg')));
+      if (k === 'main') addMsg(r, 'hint', 'h-main');
       addMsg(r, 'err', 'e-' + k);
     });
     // consumo
@@ -1344,6 +1368,7 @@ const PBPDF = (() => {
     // veredito
     const U = r.ui;
     if (typeof showCur === 'function') showCur();
+    if ($('h-main')) { $('h-main').textContent = U.mainHint; $('h-main').classList.toggle('bad', r.PMD_OUT); }
     const v = $('verdict'); v.classList.toggle('bad', r.V !== 'OK'); $('vmsg').textContent = U.banner;
     $('cW').textContent = U.chips.dep; $('cD').textContent = U.chips.disp; $('cF').textContent = U.chips.pouso;
     // erros nos campos
@@ -1378,7 +1403,8 @@ const PBPDF = (() => {
     const b = $('envBanner'); b.classList.toggle('bad', r.ENV_OUT); b.textContent = U.envBanner;
     $('phases').innerHTML = U.phases.map(([t, st, d]) => `<tr><td>${t}</td><td><span class="pill ${st === 'OK' ? '' : 'bad'}">${st}</span></td><td class="cond ${st === 'OK' ? '' : 'bad'}">${esc(d)}</td></tr>`).join('');
     // números
-    $('nums').innerHTML = U.nums.map(([t, a, c]) => `<tr><td>${t}</td><td class="v">${a}</td><td class="v">${c}</td></tr>`).join('') +
+    $('nums').innerHTML = U.nums.map(([t, a, c]) => { const pcp = t.startsWith('PCP para'); const cls = pcp ? (r.PMD_OUT ? ' class="pcp bad"' : ' class="pcp"') : '';
+      return `<tr${cls}><td>${pcp ? '<b>' + t + '</b>' : t}</td><td class="v">${pcp ? '<b>' + a + '</b>' : a}</td><td class="v">${c}</td></tr>`; }).join('') +
       `<tr><td><b>Disponibilidade até o PMD (kg)</b></td><td class="v">${U.dispPMD}</td><td></td></tr>`;
     // autonomia
     $('aut').innerHTML = [['Total (auxiliar + principal + supplies)', r.aut.total], ['Voos locais (supplies cheios)', r.aut.local], ['Voos de segurança (50 kg + supplies)', r.aut.seg], ['EET total', r.aut.eet]]
