@@ -120,6 +120,7 @@ input.warnf { border-color: var(--bad); background: var(--bad-bg); color: var(--
 .row.seatrow.on { background: var(--ok-bg); box-shadow: inset 4px 0 0 var(--ok); }
 .row.seatrow.on .lbl { font-weight: 600; }
 .row.seatrow:not(.on) .lbl { color: var(--muted); }
+.mat small.pad { color: var(--muted); font-weight: 500; font-size: .8rem; }
 .mat.on { background: var(--ok-bg); box-shadow: inset 4px 0 0 var(--ok); font-weight: 600; }
 .mat:not(.on) > div:first-child, .mat:not(.on) .kg { color: var(--muted); }
 .mat:not(.on) .step output { color: var(--muted); }
@@ -281,7 +282,7 @@ footer { color: var(--muted); font-size: .78rem; padding: 0 0 24px; max-width: 8
 <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
   <div class="box">
     <strong id="modalTitle">Restaurar os valores padrão?</strong>
-    <span>Pesos, equipamentos, combustível, consumos e materiais voltam ao padrão Ceoar.</span>
+    <span>Volta ao padrão Ceoar: pesos dos pilotos e dos bancos zerados (todos os bancos instalados), estante e torre do FLIR instaladas, tanque principal e supplies cheios, sem auxiliar, consumos padrão, EET zerados, materiais "A bordo em regra" incluídos (sacola de bloqueios com 13,9 kg) e "Conforme a missão" zerados.</span>
     <div class="acts"><button type="button" class="btn" id="mNo">Cancelar</button><button type="button" class="btn primary" id="mYes">Restaurar</button></div>
   </div>
 </div>
@@ -687,9 +688,9 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 
 </script>
 <script>
-/* Motor de cálculo — Peso e Balanceamento EC 135 T2+ — v1.7 (08/11/2026)
+/* Motor de cálculo — Peso e Balanceamento EC 135 T2+ — v1.9 (11/11/2026)
    Regra de consistência: todo limite é comparado com o valor arredondado na mesma precisão em que é exibido
-   (peso 0,01 kg; combustível 0,1 kg). Assim o veredito nunca contradiz o número mostrado. */
+   (peso 0,1 kg; combustível 0,1 kg). Assim o veredito nunca contradiz o número mostrado. */
 const PB = (() => {
   const ANV = {
     'PR-RFA': { W: 1873.06, MX: 1873.06 * 4495, MY: 0, flirModel: 'Ultra 8500', flir: [18.4, 1980], estante: [11, 3413], prov: [15, 3260],
@@ -709,7 +710,7 @@ const PB = (() => {
   const LOCS = ['Frente', 'Meio', 'Trás', 'Bagageiro'];   // Frente = cabine dos pilotos (braço do piloto)
   const LOC_X = { 'Meio': 4320, 'Trás': 4955, 'Bagageiro': 5000 };
   // materiais: primeiro os que, em regra, estão sempre a bordo (BORDO_N itens); depois os conforme a missão
-  const ITEMS = [['Fone novo (pilotos)', 0.6, 2, 'Frente'], ['Fone novo', 0.6, 1, 'Meio'], ['Fone antigo', 1.0, 0, ''],
+  const ITEMS = [['Fone novo (pilotos)', 0.6, 2, 'Frente'], ['Fone novo', 0.6, 2, 'Meio'], ['Fone antigo', 1.0, 3, 'Meio'],
     ['Manuais Airbus', 4.1, 1, 'Meio'], ['Documentos obrigatórios', 1.6, 1, 'Meio'], ['MAPO', 1.2, 1, 'Meio'], ['Diário de bordo', 0.5, 1, 'Meio'],
     ['iPad reserva', 1.2, 1, 'Meio'], ['Checklists Ceoar', 1.8, 1, 'Frente'], ['Material do FLIR', 0.7, 1, 'Trás'],
     ['Sacola de bloqueios', 13.9, 1, 'Bagageiro'], ['Copo coletor', 1.1, 1, 'Bagageiro'], ['Para-sol', 1.1, 1, 'Bagageiro'],
@@ -717,6 +718,8 @@ const PB = (() => {
     ['EcoFlow (bateria + acessórios)', 9.6, 0, ''], ['Bote salva-vidas RAF1108', 16.6, 0, ''], ['Colete salva-vidas Switlik', 1.8, 0, ''],
     ['Outro 1', 0, 0, ''], ['Outro 2', 0, 0, ''], ['Outro 3', 0, 0, ''], ['Outro 4', 0, 0, ''], ['Outro 5', 0, 0, '']];
   const BORDO_N = 13;
+  // itens fixos cujo peso por unidade pode ser alterado (o padrão aparece entre parênteses)
+  const KG_EDIT = ['Sacola de bloqueios'];
   // nomes antigos -> nomes atuais (migração de dados salvos)
   const RENAMED = { 'Bateria portátil': 'Fonte aux portátil' };
   const EDITABLE_FROM = 19; // índice a partir do qual nome e kg/un são editáveis
@@ -736,7 +739,7 @@ const PB = (() => {
   const rnd = (v, d) => { if (!isNum(v)) return v; const p = Math.pow(10, d), a = Math.abs(v); const r = Math.round(Number((a * p).toPrecision(15))) / p; return (v < 0 ? -r : r) + 0; };
   const NF = [0, 1, 2].map(d => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d }));
   const fmt = (v, d) => NF[d].format(rnd(v, d) + 0);
-  const fmtW = v => fmt(v, 2), fmtF = v => fmt(v, 1), fmtI = v => fmt(v, 0);
+  const fmtW = v => fmt(v, 1), fmtF = v => fmt(v, 1), fmtI = v => fmt(v, 0);
 
   function fuelArm(ms) { // MATCH aproximado + interpolação linear, como na planilha
     let i = 0;
@@ -748,11 +751,12 @@ const PB = (() => {
 
   function defaults() {
     return {
-      anv: 'PR-RFC', pcd: 80, pce: 80,
-      seats: SEATS.map((s, i) => ({ inst: i === 2 ? 'S' : 'N', w: i === 2 ? 80 : 0 })),
-      equip: { estante: 'N', flir: 'N', sx16: 'N', floats: 'N', auxtk: 'N' },
+      // padrão Ceoar: pesos a preencher (zerados), todos os bancos instalados, estante e torre do FLIR, tanques cheios sem auxiliar
+      anv: 'PR-RFC', pcd: 0, pce: 0,
+      seats: SEATS.map(() => ({ inst: 'S', w: 0 })),
+      equip: { estante: 'S', flir: 'S', sx16: 'N', floats: 'N', auxtk: 'N' },
       mats: ITEMS.map(([name, kg, qty, loc]) => ({ name, kg, qty, loc })),
-      main: 471.1, sup: 89.3, aux: 0, acion: 15, taxi: 15, proc: 0, eetT: 60, ct: 195, eetV: 0, cv: 170,
+      main: 471.1, sup: 89.3, aux: 0, acion: 15, taxi: 15, proc: 0, eetT: 0, ct: 195, eetV: 0, cv: 170,
       cfg: { assento: 'H110', prov: 'N', seatW: 11, dens: 0.785, op: { inst: 'N', w: 0, lado: 'LH', furo: 30, seatW: 11 } },
     };
   }
@@ -853,7 +857,7 @@ const PB = (() => {
     const where = p => (p.fr === 0 ? 'na decolagem' : p.fr === 1 ? 'no pouso' : `em voo, com ${Math.round(p.ms)} kg no principal+supplies`);
     const dep = traj.A[0], arrA = traj.A[100], arrF = traj.F[100];
     const W_DEP = dep.W, W_ARR = arrA.W;
-    const W_DEP_C = rnd(W_DEP, 2);          // peso de decolagem, na precisão exibida
+    const W_DEP_C = rnd(W_DEP, 1);          // peso de decolagem, na precisão exibida
     const PMD_OUT = W_DEP_C > LIM.PMD;
     const near = p => Math.min(p.X - fwdLim(W_ARR), aftLim(W_ARR) - p.X);
     const X_ARR = near(arrA) <= near(arrF) ? arrA.X : arrF.X;
@@ -945,14 +949,15 @@ const PB = (() => {
     // máximo no principal para ficar no PMD (mesma conta da planilha: ARREDONDAR.PARA.BAIXO com 1 casa)
     const trunc1 = x => Math.trunc(Number((x * 10).toPrecision(15))) / 10 + 0;
     const PMD_ROOM = LIM.PMD - (W_DEP - MS0);                       // quanto cabe de principal + supplies − acionamento
-    const MAIN_MAX = trunc1(PMD_ROOM - N(s.sup) + N(s.acion) + 1e-9);
+    const TOL = 0.05 - 1e-6;
+    const MAIN_MAX = trunc1(PMD_ROOM - N(s.sup) + N(s.acion) + TOL);
     // leitura do PCP (motor ligado, supplies cheios) em que a aeronave fica no PMD
     const PCP_PMD_RAW = PMD_ROOM - N(s.sup);
-    const PCP_PMD = PCP_PMD_RAW < 0 ? null : trunc1(PCP_PMD_RAW + 1e-9);
+    const PCP_PMD = PCP_PMD_RAW + TOL < 0 ? null : trunc1(PCP_PMD_RAW + TOL);
     const pcpPMDtxt = PCP_PMD === null ? 'impossível' : PCP_PMD >= LIM.MAX_MAIN ? 'tanque cheio cabe' : fmtF(PCP_PMD);
     let mainHint;
     if (PMD_OUT) {
-      if (PMD_ROOM < 0) mainHint = `Peso acima do PMD mesmo com principal e supplies vazios: retire ${fmtW(-PMD_ROOM)} kg de carga.`;
+      if (PMD_ROOM + TOL < 0) mainHint = `Peso acima do PMD mesmo com principal e supplies vazios: retire ${fmtW(-PMD_ROOM)} kg de carga.`;
       else if (MAIN_MAX < 0) mainHint = 'Peso acima do PMD mesmo com o principal vazio: reduza os supplies ou retire carga.';
       else mainHint = `Para voltar ao PMD: no máximo ${fmtF(MAIN_MAX)} kg no tanque principal (hoje ${fmtF(N(s.main))} kg).` + (PCP_PMD !== null ? ` Com o motor já ligado: decole quando o PCP marcar até ${fmtF(PCP_PMD)} kg.` : '');
     } else mainHint = MAIN_MAX >= LIM.MAX_MAIN ? `Principal cheio (${fmtF(LIM.MAX_MAIN)} kg) fica dentro do PMD.` : `Máximo no principal sem passar do PMD: ${fmtF(MAIN_MAX)} kg.`;
@@ -968,7 +973,7 @@ const PB = (() => {
       ],
       phases: [['Decolagem', ph.D], ['Em voo', ph.V], ['Pouso', ph.P]].map(([t, p], i) => [t, p.out ? 'FORA' : 'OK', phSum(p, 'DVP'[i])]),
       envBanner: ENV_OUT ? 'ENVELOPE EM VERMELHO: CONFIGURAÇÃO FORA DOS LIMITES' : 'Configuração dentro dos limites em todas as fases',
-      nums: [['Peso (kg)', fmtW(W_DEP_C), fmtW(rnd(W_ARR, 2))], ['Combustível a bordo (kg)', fmtF(dep.ax + TRAP + dep.ms), fmtF(Math.max(FUEL_ARR_C, 0) + TRAP)], ['Tanque principal (kg)', fmtF(PCP_DEP), fmtF(PCP_ARR)], ['PCP para decolar no PMD (kg)', pcpPMDtxt, '']],
+      nums: [['Peso (kg)', fmtW(W_DEP_C), fmtW(rnd(W_ARR, 1))], ['Combustível a bordo (kg)', fmtF(dep.ax + TRAP + dep.ms), fmtF(Math.max(FUEL_ARR_C, 0) + TRAP)], ['Tanque principal (kg)', fmtF(PCP_DEP), fmtF(PCP_ARR)], ['PCP para decolar no PMD (kg)', pcpPMDtxt, '']],
       dispPMD: fmtW(LIM.PMD - W_DEP_C),
       alerts: errs.map(([w, m]) => ({ kind: 'erro', where: w, text: m })).concat(envAlerts, warns),
       autMsg: aut.msg,
@@ -995,7 +1000,7 @@ const PB = (() => {
     return w;
   }
   function fmt1(v) { return (Math.round(v * 10) / 10).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }); }
-  return { ANV, SEAT_MODEL, SEATS, LOCS, ITEMS, BORDO_N, RENAMED, EDITABLE_FROM, LIM, POLY, fwdLim, aftLim, defaults, compute, errors, fmt1, fmt, rnd, N, isNum };
+  return { ANV, SEAT_MODEL, SEATS, LOCS, ITEMS, BORDO_N, KG_EDIT, RENAMED, EDITABLE_FROM, LIM, POLY, fwdLim, aftLim, defaults, compute, errors, fmt1, fmt, rnd, N, isNum };
 })();
 if (typeof module !== 'undefined') module.exports = PB;
 
@@ -1338,6 +1343,11 @@ const PBPDF = (() => {
         } else { const nm = document.createElement('div'); nm.textContent = m.name; d.appendChild(nm); }
         const kg = numField('mk-' + i, () => S.mats[i].kg, v => S.mats[i].kg = v, v => v < 0 ? 'Informe uma massa maior ou igual a zero.' : '');
         kg.className = 'n kgi'; kg.setAttribute('aria-label', 'kg por unidade'); const kw = document.createElement('div'); kw.className = 'kgw'; kw.appendChild(kg); d.appendChild(kw);
+      } else if (PB.KG_EDIT.includes(PB.ITEMS[i][0])) {
+        // item fixo com peso ajustável (ex.: sacola de bloqueios), com o padrão entre parênteses
+        const nm = document.createElement('div'); nm.innerHTML = `${esc(m.name)} <small class="pad">(padrão ${f1(PB.ITEMS[i][1])} kg)</small>`; d.appendChild(nm);
+        const kg = numField('mk-' + i, () => S.mats[i].kg, v => S.mats[i].kg = v, v => v < 0 ? 'Informe uma massa maior ou igual a zero.' : '');
+        kg.className = 'n kgi'; kg.setAttribute('aria-label', 'kg por unidade'); const kw = document.createElement('div'); kw.className = 'kgw'; kw.appendChild(kg); d.appendChild(kw);
       } else {
         const nm = document.createElement('div'); nm.textContent = m.name; d.appendChild(nm);
         const kg = document.createElement('div'); kg.className = 'kg num'; kg.textContent = f1(m.kg) + ' kg'; d.appendChild(kg);
@@ -1345,11 +1355,24 @@ const PBPDF = (() => {
       const stp = document.createElement('div'); stp.className = 'step';
       stp.innerHTML = `<button type="button" aria-label="Diminuir ${esc(m.name)}">−</button><output id="mq-${i}">${m.qty}</output><button type="button" aria-label="Aumentar ${esc(m.name)}">+</button>`;
       const [bm, , bp] = stp.children;
-      bm.onclick = () => { if (S.mats[i].qty > 0) { S.mats[i].qty--; stp.querySelector('output').textContent = S.mats[i].qty; update(); } };
+      bm.onclick = () => {
+        if (S.mats[i].qty > 0) {
+          S.mats[i].qty--;
+          // "Conforme a missão": ao zerar, o item volta ao estado inicial (local, peso e descrição)
+          if (S.mats[i].qty === 0 && i >= PB.BORDO_N) {
+            S.mats[i].loc = ''; d.querySelector('select').value = '';
+            if (i >= PB.EDITABLE_FROM) {
+              S.mats[i].kg = 0; S.mats[i].name = PB.ITEMS[i][0];
+              if ($('mk-' + i)) $('mk-' + i).value = fmtIn(0); if ($('mn-' + i)) $('mn-' + i).value = S.mats[i].name;
+            }
+          }
+          stp.querySelector('output').textContent = S.mats[i].qty; update();
+        }
+      };
       bp.onclick = () => { S.mats[i].qty++; if (!S.mats[i].loc) { S.mats[i].loc = 'Meio'; d.querySelector('select').value = 'Meio'; toast(`${S.mats[i].name}: local "Meio" atribuído; ajuste se necessário.`); } stp.querySelector('output').textContent = S.mats[i].qty; update(); };
       d.appendChild(stp);
       const sel = document.createElement('select'); sel.id = 'ml-' + i; sel.setAttribute('aria-label', 'Local de ' + m.name);
-      sel.innerHTML = '<option value="">— local —</option>' + PB.LOCS.map(l => `<option ${m.loc === l ? 'selected' : ''}>${l}</option>`).join('');
+      sel.innerHTML = '<option value="">Local</option>' + PB.LOCS.map(l => `<option ${m.loc === l ? 'selected' : ''}>${l}</option>`).join('');
       sel.onchange = () => { S.mats[i].loc = sel.value; update(); };
       d.appendChild(sel);
       const e = document.createElement('div'); e.className = 'err'; e.id = 'me-' + i; d.appendChild(e);
