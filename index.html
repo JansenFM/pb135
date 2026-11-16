@@ -29,6 +29,7 @@
   --font-display: -apple-system, "SF Pro Display", system-ui, "Segoe UI", sans-serif;
   --font-body: -apple-system, "SF Pro Text", system-ui, "Segoe UI", sans-serif;
   --radius: 10px;
+  --fix: #ffb000; --fix-ink: #1d1400; --fix-a: #fff4d1; --fix-b: #ffe49a; --set: #7b2cbf; --set-a: #f1e6ff; --set-b: #e0ccff;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -36,12 +37,14 @@
     --bg: #0b1420; --surface: #13202f; --ink: #e6edf5; --muted: #9aabbf; --line: #26384d; --accent: #7fb0f2;
     --input: #2b2614; --input-line: #7a6627; --ok: #5fd08a; --ok-bg: #12301f; --bad: #ff7b6e; --bad-bg: #3a1714; --warn: #f0b04a;
     --disabled: #1b2a3b; --traj-a: #f19a4c; --traj-f: #4cc883; color-scheme: dark;
+    --fix-a: #3d2e05; --fix-b: #52400c; --set: #c79bff; --set-a: #2a1a40; --set-b: #3a2558;
   }
 }
 :root[data-theme="dark"] {
   --bg: #0b1420; --surface: #13202f; --ink: #e6edf5; --muted: #9aabbf; --line: #26384d; --accent: #7fb0f2;
   --input: #2b2614; --input-line: #7a6627; --ok: #5fd08a; --ok-bg: #12301f; --bad: #ff7b6e; --bad-bg: #3a1714; --warn: #f0b04a;
   --disabled: #1b2a3b; --traj-a: #f19a4c; --traj-f: #4cc883; color-scheme: dark;
+  --fix-a: #3d2e05; --fix-b: #52400c; --set: #c79bff; --set-a: #2a1a40; --set-b: #3a2558;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; -webkit-text-size-adjust: 100%; }
@@ -70,6 +73,28 @@ header.top .sub { color: var(--muted); font-size: .85rem; }
 .topalerts li::before { content: '⚠ '; }
 .topalerts.none li::before { content: '✓ '; }
 .topalerts .k { font-weight: 800; }
+.fixes { color: var(--ink); flex: 1 1 100%; border: 3px solid var(--fix); border-radius: 10px; background: var(--surface); max-height: 46vh; overflow-y: auto; box-shadow: 0 0 0 3px rgba(255, 176, 0, .25); }
+.fixes > h3 { margin: 0; padding: 9px 12px; background: var(--fix); color: var(--fix-ink); font: 900 1rem var(--font-display); letter-spacing: .05em; position: sticky; top: 0; z-index: 1; }
+.fixes .how { margin: 0; padding: 8px 12px; font-size: .9rem; font-weight: 600; border-bottom: 1px solid var(--line); }
+.fixes .how b { font-weight: 900; }
+.fixes .sec { padding: 8px 10px 4px; }
+.fixes .sec > .st { display: block; font: 800 .82rem var(--font-display); letter-spacing: .06em; text-transform: uppercase; margin: 2px 2px 6px; }
+.fixes .sec.iso > .st { color: var(--warn); }
+.fixes .sec.set > .st { color: var(--set); }
+.fixes .opt { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 9px 10px; border-radius: 8px; margin-bottom: 6px; color: var(--ink); }
+.fixes .iso .opt.a { background: var(--fix-a); } .fixes .iso .opt.b { background: var(--fix-b); }
+.fixes .set .opt { border-left: 6px solid var(--set); } .fixes .set .opt.a { background: var(--set-a); } .fixes .set .opt.b { background: var(--set-b); }
+.fixes .no { font: 900 .78rem var(--font-display); text-align: center; min-width: 54px; padding: 4px 6px; border-radius: 6px; background: var(--fix); color: var(--fix-ink); line-height: 1.15; }
+.fixes .set .no { background: var(--set); color: #fff; }
+.fixes .cat { font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; opacity: .75; }
+.fixes .act { font-weight: 700; font-size: .95rem; }
+.fixes ol { margin: 2px 0 0; padding-left: 1.3em; font-weight: 700; font-size: .95rem; }
+.fixes ol li { margin: 2px 0; }
+.fixes .res { display: block; font-size: .8rem; font-weight: 600; margin-top: 3px; color: var(--ok); }
+.fixes .w { display: block; color: var(--bad); font-size: .8rem; font-weight: 800; }
+.fixes .w::before { content: '⚠ '; }
+.fixes details > summary { cursor: pointer; color: var(--accent); font-size: .85rem; font-weight: 700; padding: 4px 2px 8px; }
+.fixes .none { padding: 10px 12px; font-weight: 700; }
 .chip { background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 5px 10px; font-size: .82rem; white-space: nowrap; }
 .chip b { font-size: .95rem; }
 
@@ -199,8 +224,10 @@ footer { color: var(--muted); font-size: .78rem; padding: 0 0 24px; max-width: 8
     <span class="chip">Decolagem <b id="cW"></b> kg</span>
     <span class="chip">Disponível <b id="cD"></b> kg</span>
     <span class="chip">Combustível no pouso <b id="cF"></b> kg</span>
+    <button type="button" class="btn small" id="undoFix" hidden>Desfazer alternativa aplicada</button>
   </div>
   <ul class="topalerts" id="alerts" aria-label="Alertas" aria-live="polite"></ul>
+  <div class="fixes" id="fixes" hidden></div>
 </section>
 
 <main>
@@ -275,7 +302,7 @@ footer { color: var(--muted); font-size: .78rem; padding: 0 0 24px; max-width: 8
 <footer>
   Cálculo conforme o FLM EC 135 T2+ (Seção 6) e a ficha de pesagem da aeronave, validado contra a planilha Ceoar (v7) e em mais de 1 milhão de simulações de consistência.
   Ferramenta de apoio ao planejamento: a responsabilidade pelo peso e balanceamento é do piloto em comando.
-  Os dados ficam salvos só neste aparelho. Versão 1.7 (08/11/2026).
+  Os dados ficam salvos só neste aparelho. Versão 2.1 (16/11/2026).
 </footer>
 
 <div class="toast" id="toast" role="alert"></div>
@@ -688,7 +715,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 
 </script>
 <script>
-/* Motor de cálculo — Peso e Balanceamento EC 135 T2+ — v1.9 (11/11/2026)
+/* Motor de cálculo — Peso e Balanceamento EC 135 T2+ — v2.1 (16/11/2026)
    Regra de consistência: todo limite é comparado com o valor arredondado na mesma precisão em que é exibido
    (peso 0,1 kg; combustível 0,1 kg). Assim o veredito nunca contradiz o número mostrado. */
 const PB = (() => {
@@ -1000,7 +1027,182 @@ const PB = (() => {
     return w;
   }
   function fmt1(v) { return (Math.round(v * 10) / 10).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }); }
-  return { ANV, SEAT_MODEL, SEATS, LOCS, ITEMS, BORDO_N, KG_EDIT, RENAMED, EDITABLE_FROM, LIM, POLY, fwdLim, aftLim, defaults, compute, errors, fmt1, fmt, rnd, N, isNum };
+  // ===================== SUGESTÕES PARA VOLTAR AO ENVELOPE =====================
+  // Enumera alterações possíveis (uma variável por vez e, se nenhuma resolver, combinações com o combustível),
+  // acha o menor ajuste e confirma cada sugestão recalculando a configuração inteira.
+  const BAG_MAX = 250;                  // FLM Fig. 6-11: tabela de carregamento do bagageiro vai até 250 kg
+  function suggest(s0) {
+    const base = compute(s0);
+    if (base.errs.length || !base.ENV_OUT) return null;
+    const clone = o => JSON.parse(JSON.stringify(o));
+    let calls = 0;
+    const run = st => { calls++; return compute(st); };
+    const okR = r => r.errs.length === 0 && !r.ENV_OUT;
+    const out = [];
+    const seen = new Set();
+    const fmtD = (a, b) => `${fmtF(a)} → ${fmtF(b)} kg`;
+    function result(r, st) {
+      const w = [];
+      if (r.COMB_OUT) w.push(`combustível não cobre o EET (faltam ${fmtF(-r.FUEL_ARR_C)} kg)`);
+      if (N(st.eetT) > r.EET_T_MAX + 1e-3) w.push(`EET de translado acima da autonomia (máx. ${Math.floor(r.EET_T_MAX)} min)`);
+      if (N(st.eetV) > r.EET_V_MAX + 1e-3) w.push(`EET de vigilância acima da autonomia (máx. ${Math.floor(r.EET_V_MAX)} min)`);
+      if (N(st.aux) > 0 && N(st.aux) < LIM.AUX_MIN) w.push('auxiliar abaixo de 70 kg fica retido');
+      return { peso: fmtW(r.W_DEP_C), pouso: fmtF(r.FUEL_ARR_C), warn: w };
+    }
+    function add(cat, steps, st, r, size) {
+      steps = steps.filter(Boolean); const text = steps.join(' + ');
+      const key = [...steps].sort().join('|'); if (seen.has(key)) return; seen.add(key);   // mesma ação em outra ordem não se repete
+      out.push({ cat, steps, text, size, ...result(r, st), state: st });
+    }
+    // busca do valor viável mais próximo do atual numa direção (passo grosso + refino até 0,1)
+    function nearest(make, cur, lim, dir, step) {
+      let prev = cur, v = cur;
+      for (let k = 0; k < 2000; k++) {
+        v = dir < 0 ? Math.max(lim, v - step) : Math.min(lim, v + step);
+        const r = run(make(v));
+        if (okR(r)) {
+          let lo = prev, hi = v;                        // lo inviável, hi viável
+          for (let j = 0; j < 12 && Math.abs(hi - lo) > 0.05; j++) { const m = (lo + hi) / 2; if (okR(run(make(m)))) hi = m; else lo = m; }
+          // arredonda para 0,1 no sentido da mudança e confirma
+          let val = dir < 0 ? Math.floor(hi * 10 + 1e-9) / 10 : Math.ceil(hi * 10 - 1e-9) / 10;
+          for (let t = 0; t < 30; t++) {
+            if ((dir < 0 && val < lim - 1e-9) || (dir > 0 && val > lim + 1e-9)) return null;
+            const st = make(val), rr = run(st);
+            if (okR(rr)) return { v: val, st, r: rr };
+            val = Math.round((val + dir * 0.1) * 10) / 10;
+          }
+          return null;
+        }
+        prev = v;
+        if (v === lim) return null;
+      }
+      return null;
+    }
+    const fuelSearch = (stBase, pre, cat) => {
+      for (const [k, max, nm] of [['main', LIM.MAX_MAIN, 'tanque principal'], ['sup', LIM.MAX_SUP, 'supplies']]) {
+        const cur = N(stBase[k]);
+        for (const dir of [-1, 1]) {
+          const lim = dir < 0 ? 0 : max; if ((dir < 0 && cur <= 0) || (dir > 0 && cur >= max)) continue;
+          const f = nearest(v => { const st = clone(stBase); st[k] = v; return st; }, cur, lim, dir, 2);
+          if (f) add(cat, [...pre, `${dir < 0 ? 'Reduzir' : 'Aumentar'} o ${nm} em ${fmtF(Math.abs(f.v - cur))} kg (${fmtD(cur, f.v)})`], f.st, f.r, Math.abs(f.v - cur));
+        }
+      }
+      if (stBase.equip.auxtk === 'S') {
+        const cur = N(stBase.aux);
+        for (const dir of [-1, 1]) {
+          const lim = dir < 0 ? 0 : LIM.MAX_AUX; if ((dir < 0 && cur <= 0) || (dir > 0 && cur >= LIM.MAX_AUX)) continue;
+          const f = nearest(v => { const st = clone(stBase); st.aux = v; return st; }, cur, lim, dir, 2);
+          if (f) add(cat, [...pre, `${dir < 0 ? 'Reduzir' : 'Aumentar'} o auxiliar em ${fmtF(Math.abs(f.v - cur))} kg (${fmtD(cur, f.v)})`], f.st, f.r, Math.abs(f.v - cur));
+        }
+      }
+    };
+    // 1. combustível
+    fuelSearch(s0, [], 'Combustível');
+    // 2. peso de tripulantes e passageiros (troca por pessoa mais leve / carga menor)
+    for (const [k, nm] of [['pcd', 'Piloto PCD'], ['pce', 'Piloto PCE']]) {
+      const cur = N(s0[k]); if (cur <= LIM.PESO_MIN) continue;
+      const f = nearest(v => { const st = clone(s0); st[k] = v; return st; }, cur, LIM.PESO_MIN, -1, 2);
+      if (f) add('Peso a bordo', [`${nm}: tripulante com até ${fmtF(f.v)} kg (${fmtF(cur - f.v)} kg a menos)`], f.st, f.r, cur - f.v);
+    }
+    s0.seats.forEach((t, i) => {
+      if (t.inst !== 'S' || N(t.w) <= 0) return;
+      const cur = N(t.w);
+      const f = nearest(v => { const st = clone(s0); st.seats[i].w = v; return st; }, cur, 0, -1, 2);
+      if (f) add('Peso a bordo', [`${SEATS[i].name}: ${f.v > 0 ? `no máximo ${fmtF(f.v)} kg (${fmtF(cur - f.v)} kg a menos)` : `deixar vazio (${fmtF(cur)} kg a menos)`}`], f.st, f.r, cur - f.v);
+    });
+    // 3 e 4. ações discretas: reposicionar pessoas e materiais, desembarcar, retirar equipamentos e bancos vazios.
+    // Cada ação é testada sozinha e, se só o PMD continuar estourado, com o principal reduzido ao máximo que cabe.
+    const acts = [];
+    const act = (cat, text, st, size) => acts.push({ cat, text, st, size });
+    s0.seats.forEach((a, i) => {
+      if (a.inst !== 'S' || N(a.w) <= 0) return;
+      acts.push({ cat: 'Peso a bordo', text: `Desembarcar o ocupante do ${SEATS[i].name.toLowerCase()} (${fmtF(N(a.w))} kg)`, st: (() => { const st = clone(s0); st.seats[i].w = 0; return st; })(), size: N(a.w), onlyPair: true });
+      s0.seats.forEach((b, j) => {
+        if (i === j) return;
+        if (N(b.w) <= 0) {
+          const st = clone(s0); st.seats[j] = { inst: 'S', w: N(a.w) }; st.seats[i].w = 0;
+          act('Reposicionamento', `Passar o ocupante de ${fmtF(N(a.w))} kg do ${SEATS[i].name.toLowerCase()} para o ${SEATS[j].name.toLowerCase()}${b.inst !== 'S' ? ' (instalar esse banco)' : ''}`, st, N(a.w));
+          if (b.inst !== 'S') { const st2 = clone(st); st2.seats[i].inst = 'N'; act('Reposicionamento', `Mudar o banco de lugar: ocupante de ${fmtF(N(a.w))} kg do ${SEATS[i].name.toLowerCase()} para o ${SEATS[j].name.toLowerCase()} (retirar o banco de origem e instalar o de destino)`, st2, N(a.w)); }
+        } else if (j > i && b.inst === 'S' && Math.abs(N(a.w) - N(b.w)) > 0.05) {
+          const st = clone(s0); st.seats[i].w = N(b.w); st.seats[j].w = N(a.w);
+          act('Reposicionamento', `Trocar de lugar: ${SEATS[i].name.toLowerCase()} (${fmtF(N(a.w))} kg) ↔ ${SEATS[j].name.toLowerCase()} (${fmtF(N(b.w))} kg)`, st, Math.abs(N(a.w) - N(b.w)));
+        }
+      });
+    });
+    if (Math.abs(N(s0.pcd) - N(s0.pce)) > 0.05) { const st = clone(s0); st.pcd = N(s0.pce); st.pce = N(s0.pcd); act('Reposicionamento', `Trocar os pilotos de cadeira (PCD ${fmtF(N(s0.pcd))} kg ↔ PCE ${fmtF(N(s0.pce))} kg)`, st, Math.abs(N(s0.pcd) - N(s0.pce))); }
+    s0.mats.forEach((m, i) => {
+      if (!(N(m.qty) > 0 && N(m.kg) > 0 && LOCS.includes(m.loc))) return;
+      const tot = N(m.qty) * N(m.kg);
+      for (const L of LOCS) { if (L === m.loc) continue; const st = clone(s0); st.mats[i].loc = L; act('Reposicionamento', `Mudar "${m.name}" (${fmtF(tot)} kg) de ${m.loc} para ${L}`, st, tot); }
+      const st = clone(s0); st.mats[i].qty = 0; act('Materiais e equipamentos', `Desembarcar "${m.name}" (${fmtF(tot)} kg)`, st, tot);
+    });
+    const EQN = { estante: 'a estante do FLIR', flir: 'a torre do FLIR', sx16: 'o farol SX-16 + suporte', floats: 'os flutuadores', auxtk: 'o tanque auxiliar' };
+    const eqOn = Object.keys(EQN).filter(k => s0.equip[k] === 'S');
+    const eqSets = eqOn.map(k => [k]); if (s0.equip.flir === 'S' && s0.equip.estante === 'S') eqSets.push(['flir', 'estante']);
+    for (const set of eqSets) { const st = clone(s0); set.forEach(k => { st.equip[k] = 'N'; }); if (set.includes('auxtk')) st.aux = 0;
+      act('Materiais e equipamentos', `Retirar ${set.map(k => EQN[k]).join(' e ')}${set.includes('auxtk') && N(s0.aux) > 0 ? ` (com os ${fmtF(N(s0.aux))} kg de combustível)` : ''}`, st, 20 * set.length); }
+    s0.seats.forEach((t, i) => { if (t.inst !== 'S' || N(t.w) > 0) return; const st = clone(s0); st.seats[i].inst = 'N'; act('Materiais e equipamentos', `Retirar o ${SEATS[i].name.toLowerCase()} (vazio, 11 kg)`, st, 11); });
+    // aplica o ajuste do principal ao PMD quando só o peso impede
+    const viol = r => Math.max(0, -r.MIN_MF) + Math.max(0, -r.MIN_MA) + Math.max(0, -r.MIN_ML) + Math.max(0, -r.MIN_MI) + (r.PMD_OUT ? Math.max(0, r.W_DEP_C - LIM.PMD) : 0);
+    function tryFix(st) {
+      const r = run(st); if (okR(r)) return { st, r, red: 0 };
+      if (r.errs.length === 0 && r.PMD_OUT && r.MAIN_MAX >= 0 && r.MAIN_MAX < N(st.main)) {
+        const st2 = clone(st); st2.main = r.MAIN_MAX; const r2 = run(st2);
+        if (okR(r2)) return { st: st2, r: r2, red: N(st.main) - r.MAIN_MAX };
+        return { fail: true, r: r2, st: st2 };
+      }
+      return { fail: true, r, st };
+    }
+    const trimStep = (red, from) => (red > 0.05 ? `Reduzir o tanque principal em ${fmtF(red)} kg (${fmtD(from, from - red)}) para ficar no PMD` : null);
+    const tried = acts.map(a => ({ a, f: tryFix(a.st) }));
+    // redução do principal que resolve sozinha (se houver): ação + ajuste só entra se exigir menos combustível retirado
+    const fuelOnly = out.filter(o => o.cat === 'Combustível' && o.state.main < N(s0.main) && o.state.sup === s0.sup && o.state.aux === s0.aux).map(o => N(s0.main) - o.state.main);
+    const fuelRed = fuelOnly.length ? Math.min(...fuelOnly) : Infinity;
+    tried.forEach(({ a, f }) => { if (!a.onlyPair && !f.fail && (f.red <= 0.05 || f.red < fuelRed - 0.05)) add(a.cat, [a.text, trimStep(f.red, N(a.st.main))], f.st, f.r, a.size + f.red); });
+    // 5. lastro (bagageiro para CG à frente; cabine dianteira para CG atrás), com o principal ajustado ao PMD se preciso
+    const fwdBad = base.MIN_MF < 0, aftBad = base.MIN_MA < 0;
+    for (const [L, nm, want] of [['Bagageiro', 'no bagageiro', fwdBad || base.MIN_MI < 0], ['Frente', 'na cabine dos pilotos (Frente)', aftBad]]) {
+      if (!want) continue;
+      const slot = s0.mats.findIndex((m, k) => k >= EDITABLE_FROM && !(N(m.qty) > 0));   // usa um campo "Outro" livre
+      const mk = (b, trim) => { const st = clone(s0); if (slot >= 0) st.mats[slot] = { name: 'Lastro', kg: b, qty: 1, loc: L }; else st.mats.push({ name: 'Lastro', kg: b, qty: 1, loc: L }); if (trim) { const r = compute(st); if (r.PMD_OUT && r.MAIN_MAX >= 0) st.main = Math.min(N(st.main), r.MAIN_MAX); } return st; };
+      for (const trim of [false, true]) {
+        const f = nearest(b => mk(b, trim), 0, L === 'Bagageiro' ? BAG_MAX : 100, 1, 5);
+        if (f) {
+          const red = N(s0.main) - N(f.st.main);
+          add('Lastro', [`Colocar ${fmtF(f.v)} kg de lastro ${nm}`, trimStep(red, N(s0.main))], f.st, f.r, f.v + red);
+          break;
+        }
+      }
+    }
+    // 6. combinações (só se nada isolado resolver): duas ações, ou ação + combustível, sempre com o principal ajustado ao PMD
+    if (!out.length) {
+      const top = tried.filter(t => t.f.r.errs.length === 0).sort((x, y) => viol(x.f.r) - viol(y.f.r)).slice(0, 10);
+      for (const t of top) {
+        for (const b of acts) {
+          if (b === t.a || calls > 25000) continue;
+          // aplica a segunda ação sobre a primeira (diferença de estado de b em relação ao original)
+          const st = clone(t.a.st);
+          ['pcd', 'pce'].forEach(k => { if (b.st[k] !== s0[k]) st[k] = b.st[k]; });
+          b.st.seats.forEach((x, k) => { if (JSON.stringify(x) !== JSON.stringify(s0.seats[k])) st.seats[k] = clone(x); });
+          b.st.mats.forEach((x, k) => { if (JSON.stringify(x) !== JSON.stringify(s0.mats[k])) st.mats[k] = clone(x); });
+          Object.keys(b.st.equip).forEach(k => { if (b.st.equip[k] !== s0.equip[k]) st.equip[k] = b.st.equip[k]; });
+          if (b.st.aux !== s0.aux) st.aux = b.st.aux;
+          const sw = o => o.seats.reduce((t, x) => t + N(x.w), 0);
+          if (Math.abs(sw(st) - (sw(t.a.st) + sw(b.st) - sw(s0))) > 0.01) continue;   // não duplica nem some com ninguém
+          const f = tryFix(st);
+          if (!f.fail && (f.red <= 0.05 || f.red < fuelRed - 0.05)) add('Combinações', [t.a.text, b.text, trimStep(f.red, N(st.main))], f.st, f.r, t.a.size + b.size + f.red);
+        }
+        if (calls <= 25000) fuelSearch(t.f.fail ? t.a.st : t.f.st, [t.a.text], 'Combinações');
+      }
+    }
+    // ordena: por categoria e, dentro dela, pela menor alteração; marca as que mantêm o EET
+    const ORDER = ['Combustível', 'Peso a bordo', 'Reposicionamento', 'Materiais e equipamentos', 'Lastro', 'Combinações'];
+    // primeiro as ações isoladas (uma basta), depois os conjuntos (todas as ações do conjunto são necessárias)
+    out.sort((a, b) => (a.steps.length > 1) - (b.steps.length > 1) || (a.warn.length > 0) - (b.warn.length > 0) || ORDER.indexOf(a.cat) - ORDER.indexOf(b.cat) || a.steps.length - b.steps.length || a.size - b.size);
+    return { list: out.map(({ state, ...x }) => x), states: out.map(x => x.state), calls };
+  }
+
+  return { ANV, SEAT_MODEL, SEATS, LOCS, ITEMS, BORDO_N, KG_EDIT, RENAMED, EDITABLE_FROM, LIM, POLY, fwdLim, aftLim, defaults, compute, suggest, errors, fmt1, fmt, rnd, N, isNum };
 })();
 if (typeof module !== 'undefined') module.exports = PB;
 
@@ -1010,7 +1212,7 @@ if (typeof module !== 'undefined') module.exports = PB;
 const PBPDF = (() => {
   const C = { ink: [20, 30, 45], muted: [100, 112, 128], line: [205, 212, 222], accent: [31, 56, 100], ok: [26, 127, 70], okBg: [226, 239, 218], bad: [192, 0, 0], badBg: [253, 231, 230], hdr: [31, 56, 100], zebra: [246, 248, 251] };
   // fontes padrão do PDF usam WinAnsi: troca símbolos fora desse conjunto
-  const T = s => String(s ?? '').replace(/•/g, '·').replace(/[▲]/g, '').replace(/[◀▶]/g, '').replace(/≥/g, '>=').replace(/✓/g, '').replace(/⚠/g, '!').replace(/−/g, '-');
+  const T = s => String(s ?? '').replace(/•/g, '·').replace(/[▲]/g, '').replace(/[◀▶]/g, '').replace(/≥/g, '>=').replace(/✓/g, '').replace(/⚠/g, '!').replace(/−/g, '-').replace(/→/g, '->').replace(/↔/g, '<->');
   const fmt = (v, d) => (Math.round((Number(v) || 0) * 10 ** d) / 10 ** d + 0).toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d });
   const hhmm = h => { const m = Math.max(0, Math.round(h * 60)); return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`; };
 
@@ -1069,13 +1271,14 @@ const PBPDF = (() => {
       newPage(); col[0].y = col[1].y = 16; ci = 0;
     };
     function table(title, head, rows, widths, opt = {}) {
+      const TW = opt.full ? PW - 2 * M : COLW;
       const rowH = 4.6, x = col[ci].x;
       doc.setFontSize(8.2);
       const wrapped = rows.map(rw => rw.map((c, j) => doc.splitTextToSize(T(c), widths[j] - 2)));
       const hs = wrapped.map(w => Math.max(...w.map(l => l.length)) * 3.6 + 1.2);
       const total = 6.5 + (head ? rowH : 0) + hs.reduce((a, b) => a + b, 0) + 3;
       space(Math.min(total, 60)); let yy = col[ci].y; const xx = col[ci].x;
-      doc.setFillColor(...C.hdr); doc.rect(xx, yy, COLW, 5.6, 'F');
+      doc.setFillColor(...C.hdr); doc.rect(xx, yy, TW, 5.6, 'F');
       doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(255, 255, 255); doc.text(T(title.toUpperCase()), xx + 2, yy + 3.9);
       yy += 6.5;
       if (head) {
@@ -1087,7 +1290,7 @@ const PBPDF = (() => {
       wrapped.forEach((w, i) => {
         if (yy + hs[i] > BOTTOM) { col[ci].y = yy; space(hs[i] + 2); yy = col[ci].y; }
         const xx2 = col[ci].x, st = (opt.style || (() => null))(rows[i], i);
-        if (st && st.bg) { doc.setFillColor(...st.bg); doc.rect(xx2, yy - 0.2, COLW, hs[i], 'F'); } else if (i % 2) { doc.setFillColor(...C.zebra); doc.rect(xx2, yy - 0.2, COLW, hs[i], 'F'); }
+        if (st && st.bg) { doc.setFillColor(...st.bg); doc.rect(xx2, yy - 0.2, TW, hs[i], 'F'); } else if (i % 2) { doc.setFillColor(...C.zebra); doc.rect(xx2, yy - 0.2, TW, hs[i], 'F'); }
         let cx = xx2;
         w.forEach((lines, j) => {
           const al = (opt.align || [])[j] || 'left';
@@ -1098,7 +1301,7 @@ const PBPDF = (() => {
           cx += widths[j];
         });
         yy += hs[i];
-        doc.setDrawColor(...C.line); doc.setLineWidth(0.15); doc.line(xx2, yy - 0.2, xx2 + COLW, yy - 0.2);
+        doc.setDrawColor(...C.line); doc.setLineWidth(0.15); doc.line(xx2, yy - 0.2, xx2 + TW, yy - 0.2);
       });
       col[ci].y = yy + 3.5;
     }
@@ -1180,6 +1383,15 @@ const PBPDF = (() => {
     table('Materiais embarcados', ['Item', 'kg/un', 'Qtd', 'Local'], mats.length ? mats.map(m => [m.name, fmt(m.kg, 1), String(m.qty), m.loc || '—']) : [['Nenhum', '', '', '']], W4,
       { align: ['left', 'right', 'right', 'left'] });
     note(`Total de materiais: ${fmt(S.mats.reduce((t, m) => t + (PB.isNum(m.kg) && PB.isNum(m.qty) ? m.kg * m.qty : 0), 0), 1)} kg`, C.ink, true);
+    // alternativas para voltar ao envelope (todas testadas)
+    if (r.ENV_OUT && !r.errs.length) {
+      const g = PB.suggest(S);
+      const rows = g && g.list.length ? g.list.slice(0, 14).map((x, i) => [`Opção ${i + 1} — ${x.steps.length > 1 ? `CONJUNTO (faça todas): ${x.steps.map((t, k) => `${k + 1}) ${t}`).join('  ')}` : `ISOLADA (basta esta): ${x.steps[0]}`}`, `${x.peso} / ${x.pouso}${x.warn.length ? ' !' : ''}`]) : [['Nenhuma alteração isolada nem conjunto de duas ações resolve: reveja carga e tripulação.', '']];
+      ci = 0; col[0].y = col[1].y = Math.max(col[0].y, col[1].y) + 2;
+      table('Como voltar ao envelope — escolha UMA opção (todas testadas)', ['Opção', 'Peso / pouso (kg)'], rows, [PW - 2 * M - 34, 34], { align: ['left', 'right'], full: true });
+      if (g && g.list.length > 14) note(`Mais ${g.list.length - 14} alternativa(s) no app.`);
+      if (g && g.list.some(x => x.warn.length)) note('! = a alternativa resolve o envelope, mas exige revisar o combustível/EET.');
+    }
 
     footer();
     return doc;
@@ -1190,7 +1402,7 @@ const PBPDF = (() => {
 </script>
 <script>
 (() => {
-  const KEY = 'pb-ec135-ceoar-v7', KEY_OLD = 'pb-ec135-ceoar-v6', APP_VER = '1.7';
+  const KEY = 'pb-ec135-ceoar-v7', KEY_OLD = 'pb-ec135-ceoar-v6', APP_VER = '2.1';
   const $ = id => document.getElementById(id);
   const f1 = v => (Math.round(v * 10) / 10).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   const f0 = v => Math.round(v).toLocaleString('pt-BR');
@@ -1439,6 +1651,7 @@ const PBPDF = (() => {
     const ul = $('alerts'); ul.classList.toggle('has', U.alerts.length > 0); ul.classList.toggle('none', U.alerts.length === 0);
     ul.innerHTML = U.alerts.length ? U.alerts.map(a => `<li><span class="k">${esc(a.where)}:</span> ${esc(a.text)}</li>`).join('') : '<li>Sem alertas</li>';
     drawChart(r);
+    scheduleFixes(r);
   }
 
   function drawChart(r) {
@@ -1552,6 +1765,43 @@ const PBPDF = (() => {
   };
   $('pdfName').addEventListener('keydown', e => { if (e.key === 'Enter') $('pdfYes').click(); });
   $('cfgName').addEventListener('keydown', e => { if (e.key === 'Enter') $('cfgSave').click(); });
+
+  /* ===== sugestões para voltar ao envelope ===== */
+  let fixTimer = null, fixKey = '', fixStates = [], undoS = null;
+  function scheduleFixes(r) {
+    const box = $('fixes'); if (!box) return;
+    $('undoFix').hidden = !undoS;
+    if (r.errs.length || !r.ENV_OUT) { box.hidden = true; box.innerHTML = ''; fixKey = ''; return; }   // só aparece quando necessário
+    const key = JSON.stringify({ ...S, cfg: undefined }), snap = JSON.parse(JSON.stringify(S));
+    if (key === fixKey) return;
+    fixKey = key; box.hidden = false;
+    box.innerHTML = '<h3>⚠ COMO VOLTAR AO ENVELOPE</h3><p class="how">Calculando e testando as alternativas…</p>';
+    clearTimeout(fixTimer);
+    fixTimer = setTimeout(() => {
+      let g = null; try { g = PB.suggest(snap); } catch (e) { box.innerHTML = '<h3>⚠ COMO VOLTAR AO ENVELOPE</h3><div class="none">Não foi possível calcular as alternativas: ' + esc(e.message) + '</div>'; return; }
+      if (key !== fixKey) return;
+      fixStates = g ? g.states : [];
+      const list = g ? g.list.map((x, i) => [x, i]) : [];
+      if (!list.length) { box.innerHTML = '<h3>⚠ COMO VOLTAR AO ENVELOPE</h3><div class="none">Nenhuma alteração isolada nem conjunto de duas ações traz esta configuração de volta ao envelope. Reveja a carga e a tripulação.</div>'; return; }
+      const iso = list.filter(([x]) => x.steps.length === 1), set = list.filter(([x]) => x.steps.length > 1);
+      let n = 0;
+      const card = ([x, i], k) => { n++;
+        const body = x.steps.length === 1 ? `<div class="act">${esc(x.steps[0])}</div>` : `<ol>${x.steps.map(t => `<li>${esc(t)}</li>`).join('')}</ol>`;
+        return `<div class="opt ${k % 2 ? 'b' : 'a'}"><div class="no">OPÇÃO<br>${n}</div><div><div class="cat">${esc(x.cat)}${x.steps.length > 1 ? ` · conjunto de ${x.steps.length} ações` : ''}</div>${body}` +
+          `<span class="res">✔ Testado: dentro do envelope · peso ${x.peso} kg · pouso com ${x.pouso} kg</span>${x.warn.map(w => `<span class="w">${esc(w)}</span>`).join('')}</div>` +
+          `<button type="button" class="btn small" data-fix="${i}">Aplicar</button></div>`; };
+      const sec = (cls, title, items, show) => !items.length ? '' : `<div class="sec ${cls}"><span class="st">${title}</span>${items.slice(0, show).map(card).join('')}` +
+        (items.length > show ? `<details><summary>ver mais ${items.length - show} opção(ões)</summary>${items.slice(show).map((it, k) => card(it, k + show)).join('')}</details>` : '') + '</div>';
+      box.innerHTML = '<h3>⚠ COMO VOLTAR AO ENVELOPE</h3>' +
+        '<p class="how">Escolha <b>UMA</b> das opções. ' + (iso.length ? 'Nas <b>ações isoladas</b>, a ação sozinha resolve. ' : '') + (set.length ? 'Nos <b>conjuntos</b>, é preciso fazer <b>TODAS</b> as ações listadas na opção.' : '') + ' Cada opção foi testada com o cálculo completo.</p>' +
+        sec('iso', 'Ações isoladas — basta uma', iso, 6) + sec('set', 'Conjuntos de ações — faça todas as ações da opção', set, 4);
+      box.querySelectorAll('[data-fix]').forEach(b => b.onclick = () => {
+        const st = fixStates[+b.dataset.fix]; if (!st) return;
+        undoS = JSON.parse(JSON.stringify(S)); S = fixState(JSON.parse(JSON.stringify(st))) || S; save(); build(); toast('Opção aplicada. Confira os dados; use "Desfazer" para voltar.');
+      });
+    }, 120);
+  }
+  $('undoFix').onclick = () => { if (!undoS) return; S = undoS; undoS = null; save(); build(); toast('Configuração anterior restaurada.'); };
 
   $('resetBtn').onclick = () => $('modal').classList.add('show');
   $('mNo').onclick = () => $('modal').classList.remove('show');
