@@ -73,7 +73,11 @@ header.top .sub { color: var(--muted); font-size: .85rem; }
 .topalerts li::before { content: '⚠ '; }
 .topalerts.none li::before { content: '✓ '; }
 .topalerts .k { font-weight: 800; }
-.fixes { color: var(--ink); flex: 1 1 100%; border: 3px solid var(--fix); border-radius: 10px; background: var(--surface); max-height: 46vh; overflow-y: auto; box-shadow: 0 0 0 3px rgba(255, 176, 0, .25); }
+.fixes { color: var(--ink); flex: 1 1 100%; border: 3px solid var(--fix); border-radius: 10px; background: var(--surface); box-shadow: 0 0 0 3px rgba(255, 176, 0, .25); overflow: hidden; }
+.fixes .fixhead { all: unset; box-sizing: border-box; display: flex; width: 100%; align-items: center; gap: 10px; padding: 9px 12px; background: var(--fix); color: var(--fix-ink); font: 900 .95rem var(--font-display); letter-spacing: .04em; cursor: pointer; min-height: 44px; }
+.fixes .fixhead .cnt { font-weight: 700; letter-spacing: 0; }
+.fixes .fixhead .tg { margin-left: auto; padding: 4px 10px; border-radius: 6px; background: rgba(0, 0, 0, .15); font-size: .85rem; white-space: nowrap; }
+.fixes .fixbody { max-height: 36vh; overflow-y: auto; }
 .fixes > h3 { margin: 0; padding: 9px 12px; background: var(--fix); color: var(--fix-ink); font: 900 1rem var(--font-display); letter-spacing: .05em; position: sticky; top: 0; z-index: 1; }
 .fixes .how { margin: 0; padding: 8px 12px; font-size: .9rem; font-weight: 600; border-bottom: 1px solid var(--line); }
 .fixes .how b { font-weight: 900; }
@@ -302,7 +306,7 @@ footer { color: var(--muted); font-size: .78rem; padding: 0 0 24px; max-width: 8
 <footer>
   Cálculo conforme o FLM EC 135 T2+ (Seção 6) e a ficha de pesagem da aeronave, validado contra a planilha Ceoar (v7) e em mais de 1 milhão de simulações de consistência.
   Ferramenta de apoio ao planejamento: a responsabilidade pelo peso e balanceamento é do piloto em comando.
-  Os dados ficam salvos só neste aparelho. Versão 2.1 (16/11/2026).
+  Os dados ficam salvos só neste aparelho. Versão 2.2 (16/11/2026).
 </footer>
 
 <div class="toast" id="toast" role="alert"></div>
@@ -715,7 +719,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 
 </script>
 <script>
-/* Motor de cálculo — Peso e Balanceamento EC 135 T2+ — v2.1 (16/11/2026)
+/* Motor de cálculo — Peso e Balanceamento EC 135 T2+ — v2.2 (16/11/2026)
    Regra de consistência: todo limite é comparado com o valor arredondado na mesma precisão em que é exibido
    (peso 0,1 kg; combustível 0,1 kg). Assim o veredito nunca contradiz o número mostrado. */
 const PB = (() => {
@@ -1041,18 +1045,40 @@ const PB = (() => {
     const out = [];
     const seen = new Set();
     const fmtD = (a, b) => `${fmtF(a)} → ${fmtF(b)} kg`;
+    // supplies = reserva de segurança: nenhuma sugestão pode mexer neles nem fazer o EET consumi-los
+    const supCons = (r, st) => r.FUEL_ARR_C < N(st.sup) - 0.05;
+    const baseCons = supCons(base, s0);
     function result(r, st) {
       const w = [];
+      if (supCons(r, st)) w.push('o EET consome os supplies (reserva de segurança): reduza o EET ou abasteça mais o principal');
       if (r.COMB_OUT) w.push(`combustível não cobre o EET (faltam ${fmtF(-r.FUEL_ARR_C)} kg)`);
       if (N(st.eetT) > r.EET_T_MAX + 1e-3) w.push(`EET de translado acima da autonomia (máx. ${Math.floor(r.EET_T_MAX)} min)`);
       if (N(st.eetV) > r.EET_V_MAX + 1e-3) w.push(`EET de vigilância acima da autonomia (máx. ${Math.floor(r.EET_V_MAX)} min)`);
       if (N(st.aux) > 0 && N(st.aux) < LIM.AUX_MIN) w.push('auxiliar abaixo de 70 kg fica retido');
       return { peso: fmtW(r.W_DEP_C), pouso: fmtF(r.FUEL_ARR_C), warn: w };
     }
+    // EET de translado máximo que preserva os supplies (o de vigilância é mantido)
+    function eetFix(st) {
+      const AU = N(st.aux) >= LIM.AUX_MIN ? N(st.aux) : 0;
+      const avail = AU + N(st.main) - N(st.acion) - N(st.taxi) - N(st.proc) - N(st.eetV) * N(st.cv) / 60;
+      if (!(N(st.ct) > 0)) return null;
+      let t = Math.floor(avail / N(st.ct) * 60);
+      for (let k = 0; k < 3 && t >= 0; k++, t--) {
+        if (t >= N(st.eetT)) return null;
+        const st2 = clone(st); st2.eetT = t; const r2 = run(st2);
+        if (okR(r2) && !supCons(r2, st2)) return { st: st2, r: r2, step: `Reduzir o EET de translado para ${t} min (hoje ${fmtI(N(st.eetT))} min), ou prever reabastecimento, para não consumir os supplies` };
+      }
+      return null;
+    }
     function add(cat, steps, st, r, size) {
+      if (supCons(r, st) && (!baseCons || r.FUEL_ARR_C < base.FUEL_ARR_C - 0.05)) {   // não aceita consumir (mais) supplies
+        const e = eetFix(st); if (!e) return false;
+        st = e.st; r = e.r; steps = [...steps, e.step];
+      }
       steps = steps.filter(Boolean); const text = steps.join(' + ');
       const key = [...steps].sort().join('|'); if (seen.has(key)) return; seen.add(key);   // mesma ação em outra ordem não se repete
       out.push({ cat, steps, text, size, ...result(r, st), state: st });
+      return true;
     }
     // busca do valor viável mais próximo do atual numa direção (passo grosso + refino até 0,1)
     function nearest(make, cur, lim, dir, step) {
@@ -1079,7 +1105,7 @@ const PB = (() => {
       return null;
     }
     const fuelSearch = (stBase, pre, cat) => {
-      for (const [k, max, nm] of [['main', LIM.MAX_MAIN, 'tanque principal'], ['sup', LIM.MAX_SUP, 'supplies']]) {
+      for (const [k, max, nm] of [['main', LIM.MAX_MAIN, 'tanque principal']]) {   // supplies não entram: são reserva
         const cur = N(stBase[k]);
         for (const dir of [-1, 1]) {
           const lim = dir < 0 ? 0 : max; if ((dir < 0 && cur <= 0) || (dir > 0 && cur >= max)) continue;
@@ -1113,7 +1139,7 @@ const PB = (() => {
     // 3 e 4. ações discretas: reposicionar pessoas e materiais, desembarcar, retirar equipamentos e bancos vazios.
     // Cada ação é testada sozinha e, se só o PMD continuar estourado, com o principal reduzido ao máximo que cabe.
     const acts = [];
-    const act = (cat, text, st, size) => acts.push({ cat, text, st, size });
+    const act = (cat, text, st, size, sub) => { const o = { cat, text, st, size, sub }; acts.push(o); return o; };
     s0.seats.forEach((a, i) => {
       if (a.inst !== 'S' || N(a.w) <= 0) return;
       acts.push({ cat: 'Peso a bordo', text: `Desembarcar o ocupante do ${SEATS[i].name.toLowerCase()} (${fmtF(N(a.w))} kg)`, st: (() => { const st = clone(s0); st.seats[i].w = 0; return st; })(), size: N(a.w), onlyPair: true });
@@ -1121,8 +1147,8 @@ const PB = (() => {
         if (i === j) return;
         if (N(b.w) <= 0) {
           const st = clone(s0); st.seats[j] = { inst: 'S', w: N(a.w) }; st.seats[i].w = 0;
-          act('Reposicionamento', `Passar o ocupante de ${fmtF(N(a.w))} kg do ${SEATS[i].name.toLowerCase()} para o ${SEATS[j].name.toLowerCase()}${b.inst !== 'S' ? ' (instalar esse banco)' : ''}`, st, N(a.w));
-          if (b.inst !== 'S') { const st2 = clone(st); st2.seats[i].inst = 'N'; act('Reposicionamento', `Mudar o banco de lugar: ocupante de ${fmtF(N(a.w))} kg do ${SEATS[i].name.toLowerCase()} para o ${SEATS[j].name.toLowerCase()} (retirar o banco de origem e instalar o de destino)`, st2, N(a.w)); }
+          const p = act('Reposicionamento', `Passar o ocupante de ${fmtF(N(a.w))} kg do ${SEATS[i].name.toLowerCase()} para o ${SEATS[j].name.toLowerCase()}${b.inst !== 'S' ? ' (instalar esse banco)' : ''}`, st, N(a.w));
+          if (b.inst !== 'S') { const st2 = clone(st); st2.seats[i].inst = 'N'; act('Reposicionamento', `Mudar o banco de lugar: ocupante de ${fmtF(N(a.w))} kg do ${SEATS[i].name.toLowerCase()} para o ${SEATS[j].name.toLowerCase()} (retirar o banco de origem e instalar o de destino)`, st2, N(a.w), [p]); }
         } else if (j > i && b.inst === 'S' && Math.abs(N(a.w) - N(b.w)) > 0.05) {
           const st = clone(s0); st.seats[i].w = N(b.w); st.seats[j].w = N(a.w);
           act('Reposicionamento', `Trocar de lugar: ${SEATS[i].name.toLowerCase()} (${fmtF(N(a.w))} kg) ↔ ${SEATS[j].name.toLowerCase()} (${fmtF(N(b.w))} kg)`, st, Math.abs(N(a.w) - N(b.w)));
@@ -1139,8 +1165,10 @@ const PB = (() => {
     const EQN = { estante: 'a estante do FLIR', flir: 'a torre do FLIR', sx16: 'o farol SX-16 + suporte', floats: 'os flutuadores', auxtk: 'o tanque auxiliar' };
     const eqOn = Object.keys(EQN).filter(k => s0.equip[k] === 'S');
     const eqSets = eqOn.map(k => [k]); if (s0.equip.flir === 'S' && s0.equip.estante === 'S') eqSets.push(['flir', 'estante']);
+    const eqAct = {};
     for (const set of eqSets) { const st = clone(s0); set.forEach(k => { st.equip[k] = 'N'; }); if (set.includes('auxtk')) st.aux = 0;
-      act('Materiais e equipamentos', `Retirar ${set.map(k => EQN[k]).join(' e ')}${set.includes('auxtk') && N(s0.aux) > 0 ? ` (com os ${fmtF(N(s0.aux))} kg de combustível)` : ''}`, st, 20 * set.length); }
+      eqAct[set.join('+')] = act('Materiais e equipamentos', `Retirar ${set.map(k => EQN[k]).join(' e ')}${set.includes('auxtk') && N(s0.aux) > 0 ? ` (com os ${fmtF(N(s0.aux))} kg de combustível)` : ''}`, st, 20 * set.length,
+        set.length > 1 ? set.map(k => eqAct[k]).filter(Boolean) : undefined); }
     s0.seats.forEach((t, i) => { if (t.inst !== 'S' || N(t.w) > 0) return; const st = clone(s0); st.seats[i].inst = 'N'; act('Materiais e equipamentos', `Retirar o ${SEATS[i].name.toLowerCase()} (vazio, 11 kg)`, st, 11); });
     // aplica o ajuste do principal ao PMD quando só o peso impede
     const viol = r => Math.max(0, -r.MIN_MF) + Math.max(0, -r.MIN_MA) + Math.max(0, -r.MIN_ML) + Math.max(0, -r.MIN_MI) + (r.PMD_OUT ? Math.max(0, r.W_DEP_C - LIM.PMD) : 0);
@@ -1158,7 +1186,12 @@ const PB = (() => {
     // redução do principal que resolve sozinha (se houver): ação + ajuste só entra se exigir menos combustível retirado
     const fuelOnly = out.filter(o => o.cat === 'Combustível' && o.state.main < N(s0.main) && o.state.sup === s0.sup && o.state.aux === s0.aux).map(o => N(s0.main) - o.state.main);
     const fuelRed = fuelOnly.length ? Math.min(...fuelOnly) : Infinity;
-    tried.forEach(({ a, f }) => { if (!a.onlyPair && !f.fail && (f.red <= 0.05 || f.red < fuelRed - 0.05)) add(a.cat, [a.text, trimStep(f.red, N(a.st.main))], f.st, f.r, a.size + f.red); });
+    // uma ação maior (ex.: torre + estante) só aparece se nenhuma das menores que ela contém já resolver
+    tried.forEach(({ a, f }) => {
+      if (a.onlyPair || f.fail || (a.sub && a.sub.some(p => p.ok))) return;
+      // se reduzir só o principal já resolve, não lista 'ação + redução do principal' (seria só uma variação da mesma solução)
+      if ((f.red <= 0.05 || fuelRed === Infinity) && add(a.cat, [a.text, trimStep(f.red, N(a.st.main))], f.st, f.r, a.size + f.red)) a.ok = true;
+    });
     // 5. lastro (bagageiro para CG à frente; cabine dianteira para CG atrás), com o principal ajustado ao PMD se preciso
     const fwdBad = base.MIN_MF < 0, aftBad = base.MIN_MA < 0;
     for (const [L, nm, want] of [['Bagageiro', 'no bagageiro', fwdBad || base.MIN_MI < 0], ['Frente', 'na cabine dos pilotos (Frente)', aftBad]]) {
@@ -1166,8 +1199,9 @@ const PB = (() => {
       const slot = s0.mats.findIndex((m, k) => k >= EDITABLE_FROM && !(N(m.qty) > 0));   // usa um campo "Outro" livre
       const mk = (b, trim) => { const st = clone(s0); if (slot >= 0) st.mats[slot] = { name: 'Lastro', kg: b, qty: 1, loc: L }; else st.mats.push({ name: 'Lastro', kg: b, qty: 1, loc: L }); if (trim) { const r = compute(st); if (r.PMD_OUT && r.MAIN_MAX >= 0) st.main = Math.min(N(st.main), r.MAIN_MAX); } return st; };
       for (const trim of [false, true]) {
+        if (trim && fuelRed !== Infinity) continue;          // se reduzir o principal já resolve, lastro + redução não acrescenta nada
         const f = nearest(b => mk(b, trim), 0, L === 'Bagageiro' ? BAG_MAX : 100, 1, 5);
-        if (f) {
+        if (f && f.v >= 1) {
           const red = N(s0.main) - N(f.st.main);
           add('Lastro', [`Colocar ${fmtF(f.v)} kg de lastro ${nm}`, trimStep(red, N(s0.main))], f.st, f.r, f.v + red);
           break;
@@ -1386,7 +1420,7 @@ const PBPDF = (() => {
     // alternativas para voltar ao envelope (todas testadas)
     if (r.ENV_OUT && !r.errs.length) {
       const g = PB.suggest(S);
-      const rows = g && g.list.length ? g.list.slice(0, 14).map((x, i) => [`Opção ${i + 1} — ${x.steps.length > 1 ? `CONJUNTO (faça todas): ${x.steps.map((t, k) => `${k + 1}) ${t}`).join('  ')}` : `ISOLADA (basta esta): ${x.steps[0]}`}`, `${x.peso} / ${x.pouso}${x.warn.length ? ' !' : ''}`]) : [['Nenhuma alteração isolada nem conjunto de duas ações resolve: reveja carga e tripulação.', '']];
+      const rows = g && g.list.length ? g.list.slice(0, 14).map((x, i) => [`Opção ${i + 1} — ${x.steps.length > 1 ? `CONJUNTO (faça todas): ${x.steps.map((t, k) => `${k + 1}) ${t}`).join('  ')}` : `ISOLADA (basta esta): ${x.steps[0]}`}`, `${x.peso} / ${x.pouso}${x.warn.length ? ' !' : ''}`]) : [['Nenhuma alteração isolada nem conjunto de duas ações resolve sem consumir os supplies: reveja carga, tripulação e EET.', '']];
       ci = 0; col[0].y = col[1].y = Math.max(col[0].y, col[1].y) + 2;
       table('Como voltar ao envelope — escolha UMA opção (todas testadas)', ['Opção', 'Peso / pouso (kg)'], rows, [PW - 2 * M - 34, 34], { align: ['left', 'right'], full: true });
       if (g && g.list.length > 14) note(`Mais ${g.list.length - 14} alternativa(s) no app.`);
@@ -1402,7 +1436,7 @@ const PBPDF = (() => {
 </script>
 <script>
 (() => {
-  const KEY = 'pb-ec135-ceoar-v7', KEY_OLD = 'pb-ec135-ceoar-v6', APP_VER = '2.1';
+  const KEY = 'pb-ec135-ceoar-v7', KEY_OLD = 'pb-ec135-ceoar-v6', APP_VER = '2.2';
   const $ = id => document.getElementById(id);
   const f1 = v => (Math.round(v * 10) / 10).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   const f0 = v => Math.round(v).toLocaleString('pt-BR');
@@ -1775,14 +1809,14 @@ const PBPDF = (() => {
     const key = JSON.stringify({ ...S, cfg: undefined }), snap = JSON.parse(JSON.stringify(S));
     if (key === fixKey) return;
     fixKey = key; box.hidden = false;
-    box.innerHTML = '<h3>⚠ COMO VOLTAR AO ENVELOPE</h3><p class="how">Calculando e testando as alternativas…</p>';
+    box.innerHTML = '<div class="fixhead">⚠ COMO VOLTAR AO ENVELOPE <span class="cnt">— calculando e testando as alternativas…</span></div>';
     clearTimeout(fixTimer);
     fixTimer = setTimeout(() => {
-      let g = null; try { g = PB.suggest(snap); } catch (e) { box.innerHTML = '<h3>⚠ COMO VOLTAR AO ENVELOPE</h3><div class="none">Não foi possível calcular as alternativas: ' + esc(e.message) + '</div>'; return; }
+      let g = null; try { g = PB.suggest(snap); } catch (e) { box.innerHTML = '<div class="fixhead">⚠ COMO VOLTAR AO ENVELOPE</div><div class="none">Não foi possível calcular as alternativas: ' + esc(e.message) + '</div>'; return; }
       if (key !== fixKey) return;
       fixStates = g ? g.states : [];
       const list = g ? g.list.map((x, i) => [x, i]) : [];
-      if (!list.length) { box.innerHTML = '<h3>⚠ COMO VOLTAR AO ENVELOPE</h3><div class="none">Nenhuma alteração isolada nem conjunto de duas ações traz esta configuração de volta ao envelope. Reveja a carga e a tripulação.</div>'; return; }
+      if (!list.length) { box.innerHTML = '<div class="fixhead">⚠ COMO VOLTAR AO ENVELOPE</div><div class="none">Nenhuma alteração isolada nem conjunto de duas ações traz esta configuração de volta ao envelope sem consumir os supplies. Reveja a carga, a tripulação e o EET.</div>'; return; }
       const iso = list.filter(([x]) => x.steps.length === 1), set = list.filter(([x]) => x.steps.length > 1);
       let n = 0;
       const card = ([x, i], k) => { n++;
@@ -1792,9 +1826,16 @@ const PBPDF = (() => {
           `<button type="button" class="btn small" data-fix="${i}">Aplicar</button></div>`; };
       const sec = (cls, title, items, show) => !items.length ? '' : `<div class="sec ${cls}"><span class="st">${title}</span>${items.slice(0, show).map(card).join('')}` +
         (items.length > show ? `<details><summary>ver mais ${items.length - show} opção(ões)</summary>${items.slice(show).map((it, k) => card(it, k + show)).join('')}</details>` : '') + '</div>';
-      box.innerHTML = '<h3>⚠ COMO VOLTAR AO ENVELOPE</h3>' +
-        '<p class="how">Escolha <b>UMA</b> das opções. ' + (iso.length ? 'Nas <b>ações isoladas</b>, a ação sozinha resolve. ' : '') + (set.length ? 'Nos <b>conjuntos</b>, é preciso fazer <b>TODAS</b> as ações listadas na opção.' : '') + ' Cada opção foi testada com o cálculo completo.</p>' +
-        sec('iso', 'Ações isoladas — basta uma', iso, 6) + sec('set', 'Conjuntos de ações — faça todas as ações da opção', set, 4);
+      const open = localStorage.getItem('pb-fix-open') === '1';
+      box.innerHTML = `<button type="button" class="fixhead" aria-expanded="${open}" id="fixToggle">⚠ COMO VOLTAR AO ENVELOPE <span class="cnt">— ${list.length} opção(ões)${iso.length ? ` · ${iso.length} isolada(s)` : ''}${set.length ? ` · ${set.length} conjunto(s)` : ''}</span><span class="tg">${open ? '▲ Ocultar' : '▼ Mostrar'}</span></button>` +
+        `<div class="fixbody"${open ? '' : ' hidden'}>` +
+        '<p class="how">Escolha <b>UMA</b> das opções. ' + (iso.length ? 'Nas <b>ações isoladas</b>, a ação sozinha resolve. ' : '') + (set.length ? 'Nos <b>conjuntos</b>, é preciso fazer <b>TODAS</b> as ações listadas na opção.' : '') + ' Cada opção foi testada com o cálculo completo. Os supplies nunca são usados como solução.</p>' +
+        sec('iso', 'Ações isoladas — basta uma', iso, 6) + sec('set', 'Conjuntos de ações — faça todas as ações da opção', set, 4) + '</div>';
+      $('fixToggle').onclick = () => {
+        const body = box.querySelector('.fixbody'), now = body.hidden; body.hidden = !now;
+        $('fixToggle').setAttribute('aria-expanded', String(now)); box.querySelector('.tg').textContent = now ? '▲ Ocultar' : '▼ Mostrar';
+        try { localStorage.setItem('pb-fix-open', now ? '1' : '0'); } catch (e) {}
+      };
       box.querySelectorAll('[data-fix]').forEach(b => b.onclick = () => {
         const st = fixStates[+b.dataset.fix]; if (!st) return;
         undoS = JSON.parse(JSON.stringify(S)); S = fixState(JSON.parse(JSON.stringify(st))) || S; save(); build(); toast('Opção aplicada. Confira os dados; use "Desfazer" para voltar.');
